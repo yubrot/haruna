@@ -1,12 +1,29 @@
 {
   "name": "haruna",
-  "module": "index.ts",
   "type": "module",
   "private": true,
-  "devDependencies": {
-    "@types/bun": "latest"
+  "bin": {
+    "haruna": "src/cli/index.ts"
   },
-  "peerDependencies": {
+  "scripts": {
+    "test": "bun test",
+    "check": "biome check --write . && tsc --noEmit",
+    "haruna": "bun run src/cli/index.ts",
+    "build": "bun build src/cli/index.ts --compile --outfile out/haruna",
+    "install": "bun run build && mkdir -p ~/.local/bin && mv out/haruna ~/.local/bin"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.2",
+    "@types/bun": "latest",
     "typescript": "^5"
+  },
+  "dependencies": {
+    "@slack/bolt": "^4.6.0",
+    "@xterm/headless": "^6.0.0",
+    "commander": "^14.0.3",
+    "discord.js": "^14.25.1",
+    "msgpackr": "^1.11.8",
+    "preact": "^10.28.4",
+    "valibot": "^1.2.0"
   }
 }

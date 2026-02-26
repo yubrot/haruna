@@ -1,2 +1,9 @@
 [tools]
 bun = "latest"
+
+[tasks]
+test = 'bun test'
+check = 'bun run check'
+haruna = 'bun run haruna'
+build = 'bun run build'
+install = 'bun run install'
