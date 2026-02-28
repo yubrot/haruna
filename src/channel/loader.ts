@@ -9,6 +9,7 @@ import { resolve } from "node:path";
 import type { ChannelEntry } from "../config.ts";
 import { DumpChannel } from "./dump.ts";
 import type { Channel } from "./interface.ts";
+import { WebChannel } from "./web/index.ts";
 
 /**
  * Configuration passed to channel constructors during initialization.
@@ -40,6 +41,17 @@ export function loadChannels(
   const channels: Channel[] = [];
   for (const entry of entries) {
     switch (entry.name) {
+      case "web": {
+        const defaultWait = config._mode === "replay";
+        channels.push(
+          new WebChannel({
+            port: entry.port,
+            host: entry.host,
+            waitForClient: entry.waitForClient ?? defaultWait,
+          }),
+        );
+        break;
+      }
       case "dump": {
         if (config._mode === "replay") break;
         const filePath =

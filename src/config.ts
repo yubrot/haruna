@@ -49,6 +49,15 @@ const ConfigSchema = v.object({
         ),
         v.variant("name", [
           v.object({
+            name: v.literal("web"),
+            port: v.optional(
+              v.pipe(v.number(), v.integer(), v.minValue(0)),
+              7800,
+            ),
+            host: v.optional(v.string(), "127.0.0.1"),
+            waitForClient: v.optional(v.boolean()),
+          }),
+          v.object({
             name: v.literal("dump"),
             dir: v.optional(v.string()),
             path: v.optional(v.string()),

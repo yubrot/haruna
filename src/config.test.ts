@@ -130,28 +130,7 @@ describe("Config", () => {
   });
 
   describe("parseConfig", () => {
-    test.skip("accepts slack channel entry", () => {
-      const source = parseConfig({
-        channels: [
-          {
-            name: "slack",
-            appToken: "xapp-1-xxx",
-            botToken: "xoxb-xxx",
-            channel: "C01234",
-          },
-        ],
-      });
-      expect(source.channels).toMatchObject([
-        {
-          name: "slack",
-          appToken: "xapp-1-xxx",
-          botToken: "xoxb-xxx",
-          channel: "C01234",
-        },
-      ]);
-    });
-
-    test.skip("accepts channel string shorthand", () => {
+    test("accepts channel string shorthand", () => {
       const source = parseConfig({ channels: ["dump", "web"] });
       expect(source.channels).toMatchObject([
         { name: "dump" },
@@ -163,78 +142,13 @@ describe("Config", () => {
       expect(() => parseConfig({ channels: ["unknown"] })).toThrow();
     });
 
-    test.skip("accepts discord channel entry", () => {
+    test("accepts web channel object with custom properties", () => {
       const source = parseConfig({
-        channels: [
-          {
-            name: "discord",
-            botToken: "bot-token",
-            channel: "123456789",
-          },
-        ],
+        channels: [{ name: "web", port: 9000, host: "0.0.0.0" }],
       });
       expect(source.channels).toMatchObject([
-        { name: "discord", botToken: "bot-token", channel: "123456789" },
+        { name: "web", port: 9000, host: "0.0.0.0" },
       ]);
-    });
-
-    test.skip("slack string shorthand uses env var defaults", () => {
-      const original = { ...process.env };
-      try {
-        process.env.SLACK_APP_TOKEN = "xapp-env";
-        process.env.SLACK_BOT_TOKEN = "xoxb-env";
-        process.env.SLACK_CHANNEL = "C_ENV";
-        const source = parseConfig({ channels: ["slack"] });
-        expect(source.channels).toMatchObject([
-          {
-            name: "slack",
-            appToken: "xapp-env",
-            botToken: "xoxb-env",
-            channel: "C_ENV",
-          },
-        ]);
-      } finally {
-        process.env.SLACK_APP_TOKEN = original.SLACK_APP_TOKEN;
-        process.env.SLACK_BOT_TOKEN = original.SLACK_BOT_TOKEN;
-        process.env.SLACK_CHANNEL = original.SLACK_CHANNEL;
-      }
-    });
-
-    test.skip("discord string shorthand uses env var defaults", () => {
-      const original = { ...process.env };
-      try {
-        process.env.DISCORD_BOT_TOKEN = "discord-bot-env";
-        process.env.DISCORD_CHANNEL = "D_ENV";
-        const source = parseConfig({ channels: ["discord"] });
-        expect(source.channels).toMatchObject([
-          {
-            name: "discord",
-            botToken: "discord-bot-env",
-            channel: "D_ENV",
-          },
-        ]);
-      } finally {
-        process.env.DISCORD_BOT_TOKEN = original.DISCORD_BOT_TOKEN;
-        process.env.DISCORD_CHANNEL = original.DISCORD_CHANNEL;
-      }
-    });
-
-    test.skip("rejects slack channel with empty required fields", () => {
-      expect(() =>
-        parseConfig({
-          channels: [
-            { name: "slack", appToken: "", botToken: "x", channel: "C" },
-          ],
-        }),
-      ).toThrow();
-    });
-
-    test.skip("rejects discord channel with empty required fields", () => {
-      expect(() =>
-        parseConfig({
-          channels: [{ name: "discord", botToken: "", channel: "D" }],
-        }),
-      ).toThrow();
     });
   });
 
@@ -258,7 +172,7 @@ describe("Config", () => {
       expect(result.files.size).toBe(0);
     });
 
-    test.skip("builtin alias expands to registered entries", async () => {
+    test("builtin alias expands to registered entries", async () => {
       const result = await configWith(["builtin"]).resolveSceneEntries(dir);
       expect(result.builtins.has("shell")).toBe(true);
       expect(result.files.size).toBe(0);
