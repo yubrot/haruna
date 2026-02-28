@@ -41,6 +41,7 @@ export interface WebChannelOptions {
  * callback.
  */
 export class WebChannel implements Channel {
+  readonly name = "web";
   private readonly options: Required<WebChannelOptions>;
   private server: Server<unknown> | null = null;
   private readonly clients: Set<ServerWebSocket<unknown>> = new Set();

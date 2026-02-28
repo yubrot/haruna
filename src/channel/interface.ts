@@ -9,6 +9,9 @@ import type { Snapshot } from "../vt/snapshot.ts";
 
 /** Lifecycle contract shared by all channel implementations. */
 export interface Channel {
+  /** Human-readable identifier for logging and diagnostics. */
+  readonly name: string;
+
   /**
    * Start the channel (begin accepting connections / listening).
    *

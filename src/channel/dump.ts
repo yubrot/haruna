@@ -22,6 +22,7 @@ export interface DumpChannelOptions {
  * {@link Channel} adapter for {@link DumpWriter}.
  */
 export class DumpChannel implements Channel {
+  readonly name = "dump";
   private writer: DumpWriter | null = null;
   private readonly options: DumpChannelOptions;
 
