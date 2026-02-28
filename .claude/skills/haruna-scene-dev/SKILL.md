@@ -1,6 +1,6 @@
 ---
 name: haruna-scene-dev
-description: Design, implement, test, and debug Scene recognition engines for haruna. Covers the full lifecycle: analyzing TUI output with `haruna dump`, writing `haruna record` YAML scripts for deterministic test fixtures, implementing Scene detect/continue/encodeInput logic, and asserting with `traceScene`. Use when the user asks to create or modify a Scene, add or update scene test fixtures, debug scene recognition, or mentions haruna dump, haruna record, traceScene, scene events, or snapshot analysis.
+description: "Design, implement, test, and debug Scene recognition engines for haruna. Covers the full lifecycle: analyzing TUI output with `haruna dump`, writing `haruna record` YAML scripts for deterministic test fixtures, implementing Scene detect/continue/encodeInput logic, and asserting with `traceScene`. Use when the user asks to create or modify a Scene, add or update scene test fixtures, debug scene recognition, or mentions haruna dump, haruna record, traceScene, scene events, or snapshot analysis."
 ---
 
 # Scene Development Guide
