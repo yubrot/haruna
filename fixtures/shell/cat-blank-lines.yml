@@ -1,0 +1,12 @@
+# cat a file with blank lines — internal empty lines are preserved in output.
+command: [bash, --norc, --noprofile]
+env:
+  PS1: "$ "
+steps:
+  - wait: { content: "^\\$$" }
+  - snapshot
+  - input: "cat fixtures/shell/files/blank-lines.txt\n"
+  - wait: { content: "^sixth$" }
+  - wait: { content: "^\\$$" }
+  - snapshot
+  - input: "exit\n"

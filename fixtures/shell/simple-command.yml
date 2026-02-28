@@ -1,0 +1,12 @@
+# Single echo command: prompt → output → prompt.
+command: [bash, --norc, --noprofile]
+env:
+  PS1: "$ "
+steps:
+  - wait: { content: "^\\$$" }
+  - snapshot
+  - input: "echo hello\n"
+  - wait: { content: "^hello$" }
+  - wait: { content: "^\\$$" }
+  - snapshot
+  - input: "exit\n"

@@ -1,0 +1,12 @@
+# cat a 200-line text file — bulk output followed by prompt recovery.
+command: [bash, --norc, --noprofile]
+env:
+  PS1: "$ "
+steps:
+  - wait: { content: "^\\$$" }
+  - snapshot
+  - input: "cat fixtures/shell/files/large-text.txt\n"
+  - wait: { content: "^Line 200" }
+  - wait: { content: "^\\$$" }
+  - snapshot
+  - input: "exit\n"

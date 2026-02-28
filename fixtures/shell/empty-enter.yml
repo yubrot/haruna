@@ -1,0 +1,11 @@
+# Empty enter at prompt — prompt moves but no output is produced.
+command: [bash, --norc, --noprofile]
+env:
+  PS1: "$ "
+steps:
+  - wait: { content: "^\\$$" }
+  - snapshot
+  - input: "\n"
+  - wait: { stable: 200 }
+  - snapshot
+  - input: "exit\n"

@@ -1,0 +1,16 @@
+command: [bash, --norc, --noprofile]
+env:
+  PROMPT_COMMAND: "echo '[haruna]'"
+  PS1: "$ "
+steps:
+  - wait: { content: "^\\$" }
+  - snapshot
+  - input: "echo hello\n"
+  - wait: { content: "^hello$" }
+  - wait: { content: "^\\$" }
+  - snapshot
+  - input: "echo world\n"
+  - wait: { content: "^world$" }
+  - wait: { content: "^\\$" }
+  - snapshot
+  - input: "exit\n"

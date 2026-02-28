@@ -1,0 +1,8 @@
+# Initial prompt detection — shell is idle and waiting for input.
+command: [bash, --norc, --noprofile]
+env:
+  PS1: "$ "
+steps:
+  - wait: { content: "^\\$$" }
+  - snapshot
+  - input: "exit\n"

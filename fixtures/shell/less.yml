@@ -1,0 +1,24 @@
+# less with scroll, quit, and chained echo — fullscreen pager transitions.
+command: [bash, --norc, --noprofile]
+env:
+  PS1: "$ "
+steps:
+  - wait: { content: "^\\$$" }
+  - snapshot
+  # less with chained echo: start
+  - input: "seq 1 100 | less && echo after-pager\n"
+  - wait: { content: "^1$" }
+  - snapshot
+  # less: scroll twice
+  - input: " "
+  - wait: { content: "^24$" }
+  - snapshot
+  - input: " "
+  - wait: { content: "^47$" }
+  - snapshot
+  # less: quit — shell runs echo, then prompt returns
+  - input: "q"
+  - wait: { content: "^after-pager$" }
+  - wait: { content: "^\\$$" }
+  - snapshot
+  - input: "exit\n"

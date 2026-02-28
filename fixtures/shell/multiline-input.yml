@@ -1,0 +1,20 @@
+# Heredoc input spanning multiple lines — PS2 continuation prompt.
+command: [bash, --norc, --noprofile]
+env:
+  PS1: "$ "
+  PS2: "> "
+steps:
+  - wait: { content: "^\\$$" }
+  - snapshot
+  - input: "cat << 'EOF'\n"
+  - wait: { content: "^>" }
+  - input: "line one\n"
+  - input: "line two\n"
+  - input: "line three\n"
+  - wait: { content: "line three" }
+  - snapshot
+  - input: "EOF\n"
+  - wait: { content: "^line three$" }
+  - wait: { content: "^\\$$" }
+  - snapshot
+  - input: "exit\n"

@@ -1,0 +1,16 @@
+# In-place progress updates using \r (carriage return) — verifies that
+# running state detects live line changes via last_message_updated.
+command: [bash, --norc, --noprofile]
+env:
+  PS1: "$ "
+steps:
+  - wait: { content: "^\\$$" }
+  - snapshot
+  - input: "for i in 1 2 3 4 5; do printf \"\\rprogress: %d/5\" $i; sleep 1; done; echo\n"
+  - wait: { content: "progress: 2/5", timeout: 10000 }
+  - snapshot
+  - wait: { content: "progress: 4/5", timeout: 10000 }
+  - snapshot
+  - wait: { content: "^\\$$", timeout: 10000 }
+  - snapshot
+  - input: "exit\n"

@@ -1,0 +1,12 @@
+# `seq 1 20` producing 20 lines of output.
+command: [bash, --norc, --noprofile]
+env:
+  PS1: "$ "
+steps:
+  - wait: { content: "^\\$$" }
+  - snapshot
+  - input: "seq 1 20\n"
+  - wait: { content: "^20$" }
+  - wait: { content: "^\\$$" }
+  - snapshot
+  - input: "exit\n"

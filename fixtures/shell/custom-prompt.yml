@@ -1,0 +1,11 @@
+command: [bash, --norc, --noprofile]
+env:
+  PS1: "[haruna]$ "
+steps:
+  - wait: { content: "^\\[haruna\\]\\$" }
+  - snapshot
+  - input: "echo hello\n"
+  - wait: { content: "^hello$" }
+  - wait: { content: "^\\[haruna\\]\\$" }
+  - snapshot
+  - input: "exit\n"

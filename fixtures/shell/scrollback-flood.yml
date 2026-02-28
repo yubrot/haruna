@@ -1,0 +1,14 @@
+# 100 lines with sleep intervals — scrollback overflow and running state transition.
+command: [bash, --norc, --noprofile]
+env:
+  PS1: "$ "
+steps:
+  - wait: { content: "^\\$$" }
+  - snapshot
+  - input: "for i in $(seq 1 100); do echo $i; [ $((i % 10)) -eq 0 ] && sleep 1; done\n"
+  - wait: { content: "^50$", timeout: 15000 }
+  - snapshot
+  - wait: { content: "^100$", timeout: 15000 }
+  - wait: { content: "^\\$$" }
+  - snapshot
+  - input: "exit\n"

@@ -1,0 +1,26 @@
+# Tab completion: zsh displays candidates below the prompt, then executes.
+command: [zsh, --no-rcs]
+env:
+  PS1: "$ "
+cols: 80
+rows: 24
+steps:
+  - wait: { content: "^\\$" }
+  - snapshot
+  # Type partial path and press Tab to show completion candidates
+  - input: "cat fixtures/shell/files/completion/foo"
+  - wait: { stable: 200 }
+  - input: "\t"
+  - wait: { content: "foo1" }
+  - wait: { stable: 300 }
+  - snapshot
+  # Tab again to enter menu selection
+  - input: "\t"
+  - wait: { stable: 300 }
+  - snapshot
+  # Enter to accept and execute
+  - input: "\n"
+  - wait: { content: "^\\$" }
+  - wait: { stable: 300 }
+  - snapshot
+  - input: "exit\n"

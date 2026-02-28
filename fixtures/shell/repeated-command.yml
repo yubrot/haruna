@@ -1,0 +1,22 @@
+# Run a long output command twice with sleep to ensure running state is captured.
+# Uses a unique marker prefix in the second command to avoid false wait matches
+# from the first command's scrollback.
+command: [bash, --norc, --noprofile]
+env:
+  PS1: "$ "
+steps:
+  - wait: { content: "^\\$$" }
+  - snapshot
+  # First command: output lines "1" through "50"
+  - input: "for i in $(seq 1 50); do echo $i; sleep 0.02; done\n"
+  - wait: { content: "^50$", timeout: 15000 }
+  - wait: { content: "^\\$$", timeout: 15000 }
+  - snapshot
+  # Second command: output lines "A1" through "A50"
+  - input: "for i in $(seq 1 50); do echo A$i; sleep 0.02; done\n"
+  - wait: { content: "^A25$", timeout: 15000 }
+  - snapshot
+  - wait: { content: "^A50$", timeout: 15000 }
+  - wait: { content: "^\\$$", timeout: 15000 }
+  - snapshot
+  - input: "exit\n"
