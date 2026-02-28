@@ -9,6 +9,7 @@
 import { Command, InvalidArgumentError } from "commander";
 import { runDump } from "./dump.ts";
 import { runExec } from "./exec.ts";
+import { runRecord } from "./record.ts";
 import { runReplay } from "./replay.ts";
 
 const program = new Command();
@@ -38,6 +39,16 @@ program
   .argument("<file>", "dump file path")
   .action(async (file: string) => {
     process.exit(await runReplay(file));
+  });
+
+// record
+program
+  .command("record")
+  .description("Run a procedure script and capture VT snapshots to a dump file")
+  .argument("<script>", "procedure script path (YAML)")
+  .option("-o, --output <path>", "output dump file path")
+  .action(async (script: string, opts: { output?: string }) => {
+    process.exit(await runRecord(script, opts.output));
   });
 
 // dump
