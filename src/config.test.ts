@@ -134,7 +134,7 @@ describe("Config", () => {
       const source = parseConfig({ channels: ["dump", "web"] });
       expect(source.channels).toMatchObject([
         { name: "dump" },
-        { name: "web", port: 7800, host: "127.0.0.1" },
+        { name: "web", port: 0, host: "127.0.0.1" },
       ]);
     });
 
