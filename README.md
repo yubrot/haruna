@@ -2,7 +2,7 @@
 
 **Under Development**
 
-A TUI-agnostic bridge that wraps interactive CLI tools (Claude Code, Codex, etc.),
+A TUI-agnostic bridge that wraps interactive CLI tools (Shell, Claude Code, etc.),
 understands their state through pattern recognition, and bridges conversations
 to Channels (Discord, Slack, ...).
 
