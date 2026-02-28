@@ -108,7 +108,7 @@ export class Gateway {
         ch.receive(frame);
       } catch (e) {
         console.error(
-          `haruna: channel receive failed: ${e instanceof Error ? e.message : e}`,
+          `[haruna][${ch.name}] receive failed: ${e instanceof Error ? e.message : e}`,
         );
       }
     }

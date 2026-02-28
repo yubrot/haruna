@@ -42,7 +42,7 @@ export async function runRecord(
     content = await Bun.file(scriptPath).text();
   } catch (e) {
     console.error(
-      `haruna: cannot read script: ${e instanceof Error ? e.message : e}`,
+      `[haruna] cannot read script: ${e instanceof Error ? e.message : e}`,
     );
     return 1;
   }
@@ -52,7 +52,7 @@ export async function runRecord(
     script = parseRecordScript(content);
   } catch (e) {
     console.error(
-      `haruna: invalid script: ${e instanceof Error ? e.message : e}`,
+      `[haruna] invalid script: ${e instanceof Error ? e.message : e}`,
     );
     return 1;
   }
@@ -61,10 +61,10 @@ export async function runRecord(
 
   try {
     const count = await recordDump(script, outPath);
-    console.error(`haruna: recorded ${count} snapshot(s) to ${outPath}`);
+    console.error(`[haruna] recorded ${count} snapshot(s) to ${outPath}`);
     return 0;
   } catch (e) {
-    console.error(`haruna: ${e instanceof Error ? e.message : e}`);
+    console.error(`[haruna] ${e instanceof Error ? e.message : e}`);
     return 1;
   }
 }

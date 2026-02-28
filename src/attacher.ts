@@ -85,7 +85,7 @@ export class Attacher {
       await this.apply(await this.options.config.reload());
     } catch (e) {
       console.error(
-        `haruna: config reload failed: ${e instanceof Error ? e.message : e}`,
+        `[haruna] config reload failed: ${e instanceof Error ? e.message : e}`,
       );
     } finally {
       this.reloading = false;

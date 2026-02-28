@@ -51,7 +51,7 @@ export async function runDump(args: DumpArgs): Promise<number> {
 
     return 0;
   } catch (e) {
-    console.error(`haruna: ${e instanceof Error ? e.message : e}`);
+    console.error(`[haruna] ${e instanceof Error ? e.message : e}`);
     return 1;
   }
 }

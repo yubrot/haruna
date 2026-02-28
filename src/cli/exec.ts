@@ -58,7 +58,7 @@ export async function runExec(command: string[]): Promise<number> {
     exitCode = await session.exited;
     await vt.flush();
   } catch (e) {
-    console.error(`haruna: ${e instanceof Error ? e.message : e}`);
+    console.error(`[haruna] ${e instanceof Error ? e.message : e}`);
   } finally {
     await attacher.stop();
     vt.dispose();

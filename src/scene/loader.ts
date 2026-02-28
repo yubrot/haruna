@@ -64,13 +64,11 @@ export async function loadBuiltinScene(
   const factory = builtinSceneRegistry.get(name);
 
   if (!factory) {
-    console.error(`haruna: scene: ${name}: failed to load: unknown builtin`);
+    console.error(`[haruna][${name}] failed to load: unknown builtin`);
     return null;
   }
   if (Array.isArray(factory)) {
-    console.error(
-      `haruna: scene: ${name}: failed to load: ${name} is an alias`,
-    );
+    console.error(`[haruna][${name}] failed to load: ${name} is an alias`);
     return null;
   }
 

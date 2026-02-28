@@ -124,7 +124,9 @@ export class WebChannel implements Channel {
           if (input) {
             this.send?.(input);
           } else {
-            console.error("haruna: web: invalid input from client, ignoring");
+            console.error(
+              `[haruna][${this.name}] invalid input from client, ignoring`,
+            );
           }
         },
         close: (ws) => {
@@ -134,7 +136,7 @@ export class WebChannel implements Channel {
     });
 
     console.error(
-      `haruna: web: listening on http://${this.options.host}:${this.server.port}`,
+      `[haruna][${this.name}] listening on http://${this.options.host}:${this.server.port}`,
     );
 
     return clientConnected;

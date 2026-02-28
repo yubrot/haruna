@@ -32,13 +32,13 @@ export async function runReplay(file: string): Promise<number> {
 
   const hasChannels = config.channels.some((c) => c.name !== "dump");
   if (hasChannels) {
-    console.error("haruna: waiting for client connection...");
+    console.error("[haruna] waiting for client connection...");
   }
 
   await attacher.start();
 
   if (hasChannels) {
-    console.error("haruna: client connected, starting replay");
+    console.error("[haruna] client connected, starting replay");
   }
 
   try {
@@ -50,7 +50,7 @@ export async function runReplay(file: string): Promise<number> {
     const reader = await DumpReader.open(file);
     for (const { snapshot } of reader.snapshots()) gateway.update(snapshot);
   } catch (e) {
-    console.error(`haruna: ${e instanceof Error ? e.message : e}`);
+    console.error(`[haruna] ${e instanceof Error ? e.message : e}`);
     return 1;
   } finally {
     await attacher.stop();
