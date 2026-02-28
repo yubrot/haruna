@@ -85,6 +85,13 @@ export type ChannelEntry = ConfigSource["channels"][number];
 export class Config {
   /** Absolute path to the config file, or `null` when using defaults. */
   readonly path: string | null;
+  /**
+   * Base directory for resolving relative paths (scene globs, dump output, etc.).
+   *
+   * When a config file is present, this is the directory containing the config file.
+   * Otherwise, it falls back to the working directory passed at load time.
+   */
+  readonly baseDir: string;
   /** Terminal emulator settings. */
   readonly terminal: TerminalConfig;
   /** Scene entries from configuration. */
@@ -92,27 +99,60 @@ export class Config {
   /** Channel entries from configuration. */
   readonly channels: ChannelEntry[];
 
-  constructor(source: ConfigSource, path: string | null) {
+  constructor(source: ConfigSource, path: string | null, baseDir: string) {
     this.path = path;
+    this.baseDir = baseDir;
     this.terminal = source.terminal;
     this.scenes = source.scenes;
     this.channels = source.channels;
   }
 
   /**
+   * Read a config file from `path` and construct a Config instance.
+   *
+   * When `path` is `null`, returns a Config with default values.
+   *
+   * @param path - Absolute path to the config file, or `null` for defaults
+   * @param baseDir - Base directory for resolving relative paths
+   * @returns A new Config instance
+   */
+  static async load(path: string | null, baseDir: string): Promise<Config> {
+    if (!path) return new Config(parseConfig(null), null, baseDir);
+
+    const content = interpolateEnvVars(await Bun.file(path).text());
+    return new Config(parseConfig(Bun.YAML.parse(content)), path, baseDir);
+  }
+
+  /**
    * Find and load a config file by walking up from `cwd`.
    *
-   * When no config file is found, returns a Config with default values.
+   * When no config file is found, returns a Config with default values
+   * and `baseDir` set to `cwd`.
    *
    * @param cwd - The directory to start searching from
    * @returns A new Config instance
    */
-  static async load(cwd: string): Promise<Config> {
+  static async loadAtDir(cwd: string): Promise<Config> {
     const path = findConfigFile(cwd);
-    if (!path) return new Config(parseConfig(null), null);
+    return Config.load(path, path ? dirname(path) : cwd);
+  }
 
-    const content = interpolateEnvVars(await Bun.file(path).text());
-    return new Config(parseConfig(Bun.YAML.parse(content)), path);
+  /**
+   * Load configuration from an explicit file path.
+   *
+   * Unlike {@link loadAtDir}, this does not search parent directories.
+   * The file must exist; an error is thrown otherwise.
+   *
+   * @param configPath - Path to the config file (resolved relative to cwd if not absolute)
+   * @returns A new Config instance with `baseDir` set to the config file's directory
+   * @throws {Error} If the file does not exist
+   */
+  static async loadFromFile(configPath: string): Promise<Config> {
+    const absPath = resolve(configPath);
+    if (!existsSync(absPath)) {
+      throw new Error(`Config file not found: ${absPath}`);
+    }
+    return Config.load(absPath, dirname(absPath));
   }
 
   /**
@@ -121,24 +161,20 @@ export class Config {
    * @returns A new Config instance with fresh data from disk
    */
   async reload(): Promise<Config> {
-    if (!this.path) return new Config(parseConfig(null), null);
-
-    const content = interpolateEnvVars(await Bun.file(this.path).text());
-    return new Config(parseConfig(Bun.YAML.parse(content)), this.path);
+    return Config.load(this.path, this.baseDir);
   }
 
   /**
    * Resolve scene entries against the builtin registry and filesystem.
    *
    * Builtin aliases are expanded via the registry. File globs are expanded
-   * against {@link cwd}. Entries prefixed with `!` are treated as exclusions.
+   * against {@link baseDir}. Entries prefixed with `!` are treated as exclusions.
    * Per-entry properties (any key other than `src`) are accumulated and
    * available in the result maps.
    *
-   * @param cwd - Working directory for glob resolution
    * @returns Resolved builtin names and file paths with their properties
    */
-  async resolveSceneEntries(cwd: string): Promise<ResolvedSceneEntries> {
+  async resolveSceneEntries(): Promise<ResolvedSceneEntries> {
     const builtinAliases: Map<string, Record<string, unknown>> = new Map();
     const fileGlobs: Map<string, Record<string, unknown>> = new Map();
     const excludedBuiltinAliases: string[] = [];
@@ -178,7 +214,11 @@ export class Config {
 
     const files: ResolvedSceneEntries["files"] = new Map();
     for (const [fileGlob, props] of fileGlobs.entries()) {
-      for (const p of await expandGlobs([fileGlob], cwd, excludedFileGlobs)) {
+      for (const p of await expandGlobs(
+        [fileGlob],
+        this.baseDir,
+        excludedFileGlobs,
+      )) {
         files.set(p, { ...files.get(p), ...props });
       }
     }

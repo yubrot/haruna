@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { useTempDir } from "./__testing.ts";
 import { Config, interpolateEnvVars, parseConfig } from "./config.ts";
 
@@ -68,11 +68,11 @@ describe("interpolateEnvVars", () => {
 describe("Config", () => {
   const { dir } = useTempDir("config-test");
 
-  describe("load", () => {
+  describe("loadAtDir", () => {
     test("finds .haruna.yaml in cwd", async () => {
       const configPath = join(dir, ".haruna.yaml");
       writeFileSync(configPath, "terminal:\n  scrollback: 100\n");
-      const config = await Config.load(dir);
+      const config = await Config.loadAtDir(dir);
       expect(config.path).toBe(configPath);
       expect(config.terminal.scrollback).toBe(100);
     });
@@ -80,14 +80,14 @@ describe("Config", () => {
     test("finds .haruna.yml in cwd", async () => {
       const configPath = join(dir, ".haruna.yml");
       writeFileSync(configPath, "channels: []\n");
-      const config = await Config.load(dir);
+      const config = await Config.loadAtDir(dir);
       expect(config.path).toBe(configPath);
     });
 
     test("prefers .haruna.yml over .haruna.yaml", async () => {
       writeFileSync(join(dir, ".haruna.yaml"), "scenes: []\n");
       writeFileSync(join(dir, ".haruna.yml"), "scenes: []\n");
-      const config = await Config.load(dir);
+      const config = await Config.loadAtDir(dir);
       expect(config.path).toBe(join(dir, ".haruna.yml"));
     });
 
@@ -96,14 +96,62 @@ describe("Config", () => {
       mkdirSync(child, { recursive: true });
       const configPath = join(dir, ".haruna.yaml");
       writeFileSync(configPath, "scenes: []\n");
-      const config = await Config.load(child);
+      const config = await Config.loadAtDir(child);
       expect(config.path).toBe(configPath);
     });
 
     test("returns defaults when no config file exists", async () => {
-      const config = await Config.load(dir);
+      const config = await Config.loadAtDir(dir);
       expect(config.path).toBeNull();
       expect(config.terminal.scrollback).toBe(500);
+    });
+
+    test("sets baseDir to config file directory when found", async () => {
+      const configPath = join(dir, ".haruna.yaml");
+      writeFileSync(configPath, "scenes: []\n");
+      const config = await Config.loadAtDir(dir);
+      expect(config.baseDir).toBe(dir);
+    });
+
+    test("sets baseDir to cwd when no config file exists", async () => {
+      const config = await Config.loadAtDir(dir);
+      expect(config.baseDir).toBe(dir);
+    });
+
+    test("sets baseDir to config directory when found in parent", async () => {
+      const child = join(dir, "child-dir");
+      mkdirSync(child, { recursive: true });
+      const configPath = join(dir, ".haruna.yaml");
+      writeFileSync(configPath, "scenes: []\n");
+      const config = await Config.loadAtDir(child);
+      expect(config.baseDir).toBe(dir);
+    });
+  });
+
+  describe("loadFromFile", () => {
+    test("loads config from explicit path", async () => {
+      const configPath = join(dir, ".haruna.yaml");
+      writeFileSync(configPath, "terminal:\n  scrollback: 42\n");
+      const config = await Config.loadFromFile(configPath);
+      expect(config.path).toBe(configPath);
+      expect(config.terminal.scrollback).toBe(42);
+      expect(config.baseDir).toBe(dirname(configPath));
+    });
+
+    test("throws when file does not exist", async () => {
+      const missing = join(dir, "nonexistent.yaml");
+      await expect(Config.loadFromFile(missing)).rejects.toThrow(
+        /Config file not found/,
+      );
+    });
+
+    test("sets baseDir to config file directory", async () => {
+      const sub = join(dir, "configs");
+      mkdirSync(sub, { recursive: true });
+      const configPath = join(sub, "my-config.yml");
+      writeFileSync(configPath, "scenes: []\n");
+      const config = await Config.loadFromFile(configPath);
+      expect(config.baseDir).toBe(sub);
     });
   });
 
@@ -112,7 +160,7 @@ describe("Config", () => {
       const configPath = join(dir, ".haruna.yaml");
       writeFileSync(configPath, "terminal:\n  scrollback: 100\n");
 
-      const config = await Config.load(dir);
+      const config = await Config.loadAtDir(dir);
       expect(config.terminal.scrollback).toBe(100);
 
       writeFileSync(configPath, "terminal:\n  scrollback: 200\n");
@@ -122,10 +170,18 @@ describe("Config", () => {
     });
 
     test("returns defaults when path is null", async () => {
-      const config = new Config(parseConfig(null), null);
+      const config = new Config(parseConfig(null), null, dir);
       const reloaded = await config.reload();
       expect(reloaded.path).toBeNull();
       expect(reloaded.terminal.scrollback).toBe(500);
+    });
+
+    test("preserves baseDir after reload", async () => {
+      const configPath = join(dir, ".haruna.yaml");
+      writeFileSync(configPath, "terminal:\n  scrollback: 100\n");
+      const config = await Config.loadAtDir(dir);
+      const reloaded = await config.reload();
+      expect(reloaded.baseDir).toBe(config.baseDir);
     });
   });
 
@@ -162,18 +218,18 @@ describe("Config", () => {
     // ("!builtinName"), and mixed builtin + file entries once concrete
     // builtins are registered
 
-    function configWith(scenes: unknown[]): Config {
-      return new Config(parseConfig({ scenes }), null);
+    function configWith(scenes: unknown[], baseDir?: string): Config {
+      return new Config(parseConfig({ scenes }), null, baseDir ?? dir);
     }
 
     test("empty entries returns empty maps", async () => {
-      const result = await configWith([]).resolveSceneEntries(dir);
+      const result = await configWith([]).resolveSceneEntries();
       expect(result.builtins.size).toBe(0);
       expect(result.files.size).toBe(0);
     });
 
     test("builtin alias expands to registered entries", async () => {
-      const result = await configWith(["builtin"]).resolveSceneEntries(dir);
+      const result = await configWith(["builtin"]).resolveSceneEntries();
       expect(result.builtins.has("shell")).toBe(true);
       expect(result.files.size).toBe(0);
     });
@@ -181,7 +237,7 @@ describe("Config", () => {
     test("resolves file glob patterns", async () => {
       writeScene(dir, "my-scene.ts", "my-scene");
 
-      const result = await configWith(["*.ts"]).resolveSceneEntries(dir);
+      const result = await configWith(["*.ts"]).resolveSceneEntries();
       expect(result.files.size).toBe(1);
       expect([...result.files.keys()][0]).toEndWith("my-scene.ts");
     });
@@ -193,7 +249,7 @@ describe("Config", () => {
       const result = await configWith([
         "*.ts",
         "!*.test.ts",
-      ]).resolveSceneEntries(dir);
+      ]).resolveSceneEntries();
       expect(result.files.size).toBe(1);
       expect([...result.files.keys()][0]).toEndWith("scene-a.ts");
     });
@@ -203,7 +259,7 @@ describe("Config", () => {
       mkdirSync(sub, { recursive: true });
       writeScene(sub, "nested.ts", "nested");
 
-      const result = await configWith(["scenes/*.ts"]).resolveSceneEntries(dir);
+      const result = await configWith(["scenes/*.ts"]).resolveSceneEntries();
       expect(result.files.size).toBe(1);
       expect([...result.files.keys()][0]).toEndWith("nested.ts");
     });
@@ -211,14 +267,15 @@ describe("Config", () => {
     test("deduplicates files matched by multiple patterns", async () => {
       writeScene(dir, "scene.ts", "scene");
 
-      const result = await configWith(["*.ts", "scene.ts"]).resolveSceneEntries(
-        dir,
-      );
+      const result = await configWith([
+        "*.ts",
+        "scene.ts",
+      ]).resolveSceneEntries();
       expect(result.files.size).toBe(1);
     });
 
     test("returns empty files for glob with no matches", async () => {
-      const result = await configWith(["*.ts"]).resolveSceneEntries(dir);
+      const result = await configWith(["*.ts"]).resolveSceneEntries();
       expect(result.files.size).toBe(0);
     });
 
@@ -229,13 +286,26 @@ describe("Config", () => {
       const result = await configWith([
         { src: "*.ts", color: "red" },
         { src: "scene.ts", size: 10 },
-      ]).resolveSceneEntries(dir);
+      ]).resolveSceneEntries();
       expect(result.files.size).toBe(2);
       const fileEntries = new Map(
         [...result.files.entries()].map(([k, v]) => [k.split("/").pop(), v]),
       );
       expect(fileEntries.get("scene.ts")).toEqual({ color: "red", size: 10 });
       expect(fileEntries.get("other.ts")).toEqual({ color: "red" });
+    });
+
+    test("resolves globs relative to baseDir", async () => {
+      const scenesDir = join(dir, "project");
+      mkdirSync(scenesDir, { recursive: true });
+      writeScene(scenesDir, "proj-scene.ts", "proj-scene");
+
+      const result = await configWith(
+        ["*.ts"],
+        scenesDir,
+      ).resolveSceneEntries();
+      expect(result.files.size).toBe(1);
+      expect([...result.files.keys()][0]).toEndWith("proj-scene.ts");
     });
   });
 });

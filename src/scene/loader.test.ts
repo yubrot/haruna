@@ -7,8 +7,8 @@ import { loadBuiltinScene, loadFileScene, loadScenes } from "./loader.ts";
 
 const defaultConfig = { _mode: "exec" as const, _command: [] };
 
-function configWith(scenes: unknown[]): Config {
-  return new Config(parseConfig({ scenes }), null);
+function configWith(scenes: unknown[], baseDir: string): Config {
+  return new Config(parseConfig({ scenes }), null, baseDir);
 }
 
 function writeScene(dir: string, fileName: string, label: string): string {
@@ -128,7 +128,7 @@ describe("loadScenes", () => {
   test("loads scenes from resolved file entries", async () => {
     writeScene(dir, "my-scene.ts", "my-scene");
 
-    const resolved = await configWith(["*.ts"]).resolveSceneEntries(dir);
+    const resolved = await configWith(["*.ts"], dir).resolveSceneEntries();
     const scenes = await loadScenes(resolved, defaultConfig);
     expect(scenes).toHaveLength(1);
     expect(scenes[0]?.state).toBe("my-scene");
@@ -146,9 +146,10 @@ describe("loadScenes", () => {
       });`,
     );
 
-    const resolved = await configWith(["factory-scene.ts"]).resolveSceneEntries(
+    const resolved = await configWith(
+      ["factory-scene.ts"],
       dir,
-    );
+    ).resolveSceneEntries();
     const scenes = await loadScenes(resolved, defaultConfig);
     expect(scenes).toHaveLength(1);
     expect(scenes[0]?.state).toBe("factory");
@@ -158,7 +159,10 @@ describe("loadScenes", () => {
     const path = join(dir, "invalid.ts");
     writeFileSync(path, "export default 42;");
 
-    const resolved = await configWith(["invalid.ts"]).resolveSceneEntries(dir);
+    const resolved = await configWith(
+      ["invalid.ts"],
+      dir,
+    ).resolveSceneEntries();
     expect(resolved.files.size).toBe(1);
     const scenes = await loadScenes(resolved, defaultConfig);
     expect(scenes).toHaveLength(0);
@@ -168,7 +172,7 @@ describe("loadScenes", () => {
     const path = join(dir, "broken.ts");
     writeFileSync(path, "import { x } from './nonexistent';");
 
-    const resolved = await configWith(["broken.ts"]).resolveSceneEntries(dir);
+    const resolved = await configWith(["broken.ts"], dir).resolveSceneEntries();
     expect(resolved.files.size).toBe(1);
     const scenes = await loadScenes(resolved, defaultConfig);
     expect(scenes).toHaveLength(0);
@@ -178,7 +182,7 @@ describe("loadScenes", () => {
     writeScene(dir, "scene-a.ts", "a");
     writeScene(dir, "scene-b.ts", "b");
 
-    const resolved = await configWith(["*.ts"]).resolveSceneEntries(dir);
+    const resolved = await configWith(["*.ts"], dir).resolveSceneEntries();
     const scenes = await loadScenes(resolved, defaultConfig);
     expect(scenes).toHaveLength(2);
     const states = scenes.map((s) => s.state).sort();
@@ -197,9 +201,10 @@ describe("loadScenes", () => {
       });`,
     );
 
-    const resolved = await configWith([
-      { src: "config-scene.ts", color: "blue" },
-    ]).resolveSceneEntries(dir);
+    const resolved = await configWith(
+      [{ src: "config-scene.ts", color: "blue" }],
+      dir,
+    ).resolveSceneEntries();
     const scenes = await loadScenes(resolved, defaultConfig);
     expect(scenes).toHaveLength(1);
     expect(scenes[0]?.state).toBe("blue");

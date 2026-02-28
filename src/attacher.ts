@@ -16,8 +16,6 @@ import { computeChecksum, FileWatch } from "./util/file.ts";
 export interface AttachOptions {
   /** The current haruna configuration. */
   config: Config;
-  /** Working directory for scene resolution. */
-  cwd: string;
   /** Configuration passed to scene factories during initialization. */
   sceneConfig: SceneConfig;
   /** Configuration passed to channel constructors during initialization. */
@@ -99,11 +97,11 @@ export class Attacher {
    * rebuilt only when their serialized config differs.
    */
   private async apply(newConfig: Config): Promise<void> {
-    const { cwd, sceneConfig, channelConfig } = this.options;
+    const { sceneConfig, channelConfig } = this.options;
     const fileWatchTargets: string[] = [];
 
     // Scenes
-    const resolved = await newConfig.resolveSceneEntries(cwd);
+    const resolved = await newConfig.resolveSceneEntries();
     const sceneFilePaths = [...resolved.files.keys()];
     const cacheKey = await computeSceneCacheKey(resolved);
 

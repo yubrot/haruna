@@ -4,7 +4,7 @@
  * @module
  */
 
-import { Config } from "../config.ts";
+import type { Config } from "../config.ts";
 import type { DumpQuery, DumpResult } from "../dump/query.ts";
 import { queryDump } from "../dump/query.ts";
 import type { Scene } from "../scene/interface.ts";
@@ -37,11 +37,12 @@ export interface DumpArgs {
  * delegates to {@link queryDump} for execution.
  *
  * @param args - Parsed dump arguments with all defaults resolved
+ * @param config - Resolved configuration
  * @returns Exit code (0 on success, 1 on error)
  */
-export async function runDump(args: DumpArgs): Promise<number> {
+export async function runDump(args: DumpArgs, config: Config): Promise<number> {
   try {
-    const query = await buildQuery(args);
+    const query = await buildQuery(args, config);
 
     if (args.json) {
       console.log(JSON.stringify(await queryDump(query)));
@@ -57,12 +58,10 @@ export async function runDump(args: DumpArgs): Promise<number> {
 }
 
 /** Build a {@link DumpQuery} from resolved CLI arguments, loading scenes if requested. */
-async function buildQuery(args: DumpArgs): Promise<DumpQuery> {
+async function buildQuery(args: DumpArgs, config: Config): Promise<DumpQuery> {
   let scenes: Scene[] | null = null;
   if (args.scene) {
-    const cwd = process.cwd();
-    const config = await Config.load(cwd);
-    const resolved = await config.resolveSceneEntries(cwd);
+    const resolved = await config.resolveSceneEntries();
     scenes = await loadScenes(resolved, {
       _mode: "replay",
       _command: [],

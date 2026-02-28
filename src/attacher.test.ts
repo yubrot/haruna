@@ -6,11 +6,11 @@ import { Gateway } from "./gateway.ts";
 describe("Attacher", () => {
   test("start attaches channels to gateway and stop removes them", async () => {
     const gateway = new Gateway();
-    const config = new Config(parseConfig({ channels: [] }), null);
+    const cwd = process.cwd();
+    const config = new Config(parseConfig({ channels: [] }), null, cwd);
 
     const attacher = new Attacher(gateway, {
       config,
-      cwd: process.cwd(),
       sceneConfig: { _mode: "exec", _command: ["echo", "test"] },
       channelConfig: { _mode: "exec", _command: ["echo", "test"] },
     });
@@ -33,16 +33,17 @@ describe("Attacher", () => {
 
   test("replay mode excludes dump channels", async () => {
     const gateway = new Gateway();
+    const cwd = process.cwd();
     const config = new Config(
       parseConfig({
         channels: [{ name: "dump" }],
       }),
       null,
+      cwd,
     );
 
     const attacher = new Attacher(gateway, {
       config,
-      cwd: process.cwd(),
       sceneConfig: { _mode: "replay", _command: [] },
       channelConfig: { _mode: "replay", _command: [] },
     });

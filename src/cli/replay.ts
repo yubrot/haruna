@@ -5,7 +5,7 @@
  */
 
 import { Attacher } from "../attacher.ts";
-import { Config } from "../config.ts";
+import type { Config } from "../config.ts";
 import { DumpReader } from "../dump/reader.ts";
 import { Gateway } from "../gateway.ts";
 
@@ -17,15 +17,13 @@ import { Gateway } from "../gateway.ts";
  * config (excluding dump channels), replays the file, then cleans up.
  *
  * @param file - Path to the dump file to replay
+ * @param config - Resolved configuration
  * @returns The exit code (0 on success, 1 on error)
  */
-export async function runReplay(file: string): Promise<number> {
-  const cwd = process.cwd();
-  const config = await Config.load(cwd);
+export async function runReplay(file: string, config: Config): Promise<number> {
   const gateway = new Gateway();
   const attacher = new Attacher(gateway, {
     config,
-    cwd,
     sceneConfig: { _mode: "replay", _command: [] },
     channelConfig: { _mode: "replay", _command: [] },
   });

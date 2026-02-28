@@ -5,7 +5,7 @@
  */
 
 import { Attacher } from "../attacher.ts";
-import { Config } from "../config.ts";
+import type { Config } from "../config.ts";
 import { Gateway } from "../gateway.ts";
 import { type PtySession, runPty } from "../pty/index.ts";
 import { VirtualTerminal } from "../vt/index.ts";
@@ -14,12 +14,13 @@ import { VirtualTerminal } from "../vt/index.ts";
  * Run a command in a PTY with full event pipeline.
  *
  * @param command - The command and its arguments to execute
+ * @param config - Resolved configuration
  * @returns The child process exit code
  */
-export async function runExec(command: string[]): Promise<number> {
-  const cwd = process.cwd();
-  const config = await Config.load(cwd);
-
+export async function runExec(
+  command: string[],
+  config: Config,
+): Promise<number> {
   let session: PtySession | null = null;
 
   const gateway = new Gateway({
@@ -27,7 +28,6 @@ export async function runExec(command: string[]): Promise<number> {
   });
   const attacher = new Attacher(gateway, {
     config,
-    cwd,
     sceneConfig: { _mode: "exec", _command: command },
     channelConfig: { _mode: "exec", _command: command },
   });

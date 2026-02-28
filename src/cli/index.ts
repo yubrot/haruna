@@ -7,10 +7,29 @@
  */
 
 import { Command, InvalidArgumentError } from "commander";
+import { Config } from "../config.ts";
 import { runDump } from "./dump.ts";
 import { runExec } from "./exec.ts";
 import { runRecord } from "./record.ts";
 import { runReplay } from "./replay.ts";
+
+/**
+ * Load configuration from an explicit path or by searching upward from cwd.
+ *
+ * @param configPath - Explicit config file path, or `undefined` to search
+ * @returns Resolved configuration
+ */
+async function loadConfig(configPath?: string): Promise<Config> {
+  try {
+    return configPath
+      ? await Config.loadFromFile(configPath)
+      : await Config.loadAtDir(process.cwd());
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error(`[haruna] Failed to load config: ${message}`);
+    process.exit(1);
+  }
+}
 
 const program = new Command();
 
@@ -25,20 +44,24 @@ program
 program
   .command("exec", { isDefault: true })
   .description("Run a command in a PTY (default subcommand)")
+  .option("-c, --config <path>", "path to config file")
   .argument("[command...]", "command and arguments to run")
   .passThroughOptions()
-  .action(async (command: string[]) => {
+  .action(async (command: string[], opts: { config?: string }) => {
     const cmd = command.length > 0 ? command : [process.env.SHELL || "/bin/sh"];
-    process.exit(await runExec(cmd));
+    const config = await loadConfig(opts.config);
+    process.exit(await runExec(cmd, config));
   });
 
 // replay
 program
   .command("replay")
   .description("Replay a dump file through the event pipeline")
+  .option("-c, --config <path>", "path to config file")
   .argument("<file>", "dump file path")
-  .action(async (file: string) => {
-    process.exit(await runReplay(file));
+  .action(async (file: string, opts: { config?: string }) => {
+    const config = await loadConfig(opts.config);
+    process.exit(await runReplay(file, config));
   });
 
 // record
@@ -55,6 +78,7 @@ program
 program
   .command("dump")
   .description("Inspect binary dump files")
+  .option("-c, --config <path>", "path to config file")
   .argument("<file>", "dump file path")
   .option("--stats", "include metadata and statistics")
   .option("--list", "list snapshots")
@@ -89,6 +113,7 @@ program
     async (
       file: string,
       opts: {
+        config?: string;
         stats?: true;
         list?: true;
         diff?: 0 | 1 | 2 | true;
@@ -126,26 +151,30 @@ program
         }
       }
 
+      const config = await loadConfig(opts.config);
       process.exit(
-        await runDump({
-          file,
-          stats,
-          list,
-          diff,
-          at: opts.at,
-          scene: opts.scene ?? false,
-          search: opts.search,
-          from: opts.from,
-          to: opts.to,
-          count: opts.count ?? 100,
-          context:
-            opts.context === undefined
-              ? 3
-              : opts.context === -1
-                ? null
-                : opts.context,
-          json: opts.json ?? false,
-        }),
+        await runDump(
+          {
+            file,
+            stats,
+            list,
+            diff,
+            at: opts.at,
+            scene: opts.scene ?? false,
+            search: opts.search,
+            from: opts.from,
+            to: opts.to,
+            count: opts.count ?? 100,
+            context:
+              opts.context === undefined
+                ? 3
+                : opts.context === -1
+                  ? null
+                  : opts.context,
+            json: opts.json ?? false,
+          },
+          config,
+        ),
       );
     },
   );

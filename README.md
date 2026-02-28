@@ -2,7 +2,6 @@
 
 **Under Development**: Immediate tasks
 
-- [ ] `-c|--config` option
 - [ ] Claude Code Scene
 - [ ] Slack Channel
 - [ ] Discord Channel
