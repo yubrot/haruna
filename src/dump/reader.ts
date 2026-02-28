@@ -9,24 +9,24 @@
 
 import type { Snapshot, SnapshotDelta } from "../vt/snapshot.ts";
 import { applySnapshotDiff, computeSnapshotDiff } from "../vt/snapshot.ts";
-import type { HeaderPayload } from "./record.ts";
-import { decodeRecord } from "./record.ts";
+import type { HeaderPayload } from "./frame.ts";
+import { decodeFrame } from "./frame.ts";
 
-/** Index entry for a single snapshot record in the dump file. */
+/** Index entry for a single snapshot frame in the dump file. */
 interface IndexEntry {
-  /** Byte offset of the record in the file buffer. */
+  /** Byte offset of the frame in the file buffer. */
   offset: number;
-  /** Record type string. */
+  /** Frame type string. */
   type: "keyframe" | "delta";
-  /** Timestamp from the record frame. */
+  /** Timestamp from the frame. */
   timestamp: number;
 }
 
 /**
  * A snapshot with optional delta metadata.
  *
- * When the entry originates from a delta record, `delta` describes the
- * change magnitude. For keyframe records, `delta` is `null`.
+ * When the entry originates from a delta frame, `delta` describes the
+ * change magnitude. For keyframes, `delta` is `null`.
  */
 export interface SnapshotEntry {
   /** The fully reconstructed snapshot. */
@@ -35,7 +35,7 @@ export interface SnapshotEntry {
    * Delta change summary, or `null` for the following cases:
    * - The entry is the first snapshot (no predecessor).
    * - The entry is a keyframe and the diff from the previous snapshot
-   *   cannot be expressed as a delta (e.g. `linesOffset` is `null`).
+   *   cannot be expressed as a delta (e.g. `linesOffset` changed).
    */
   delta: {
     changedLines: number[];
@@ -55,7 +55,7 @@ export class DumpReader {
   private readonly buffer: Uint8Array;
   private readonly index: IndexEntry[];
 
-  /** Session metadata from the header record. */
+  /** Session metadata from the header frame. */
   readonly header: HeaderPayload;
 
   /** Aggregate statistics computed from the index. */
@@ -71,11 +71,11 @@ export class DumpReader {
 
     let offset: number;
     {
-      const h = decodeRecord(buffer, 0);
-      if (!h || h.record.type !== "header") {
-        throw new Error("Dump file has no header record");
+      const h = decodeFrame(buffer, 0);
+      if (!h || h.frame.type !== "header") {
+        throw new Error("Dump file has no header frame");
       }
-      this.header = h.record.payload;
+      this.header = h.frame.payload;
       offset = h.nextOffset;
     }
 
@@ -83,16 +83,16 @@ export class DumpReader {
     let deltas = 0;
 
     while (offset < buffer.length) {
-      const r = decodeRecord(buffer, offset);
+      const r = decodeFrame(buffer, offset);
       if (!r) break;
 
-      if (r.record.type === "keyframe" || r.record.type === "delta") {
+      if (r.frame.type === "keyframe" || r.frame.type === "delta") {
         this.index.push({
           offset,
-          type: r.record.type,
-          timestamp: r.record.timestamp,
+          type: r.frame.type,
+          timestamp: r.frame.timestamp,
         });
-        if (r.record.type === "keyframe") keyframes++;
+        if (r.frame.type === "keyframe") keyframes++;
         else deltas++;
       }
       offset = r.nextOffset;
@@ -223,7 +223,7 @@ export class DumpReader {
   }
 
   /**
-   * Reconstruct snapshots by replaying records from `startIdx` to `endIdx`.
+   * Reconstruct snapshots by replaying frames from `startIdx` to `endIdx`.
    * Only yields entries at index >= `yieldFrom`.
    */
   private *reconstruct(
@@ -235,10 +235,10 @@ export class DumpReader {
 
     for (let i = startIdx; i <= endIdx; i++) {
       const entry = this.index[i] as IndexEntry;
-      const result = decodeRecord(this.buffer, entry.offset);
+      const result = decodeFrame(this.buffer, entry.offset);
       if (!result) break;
 
-      const { record } = result;
+      const { frame: record } = result;
       let deltaInfo: SnapshotEntry["delta"] = null;
       const prev = current;
 
@@ -249,7 +249,7 @@ export class DumpReader {
           if (diff) deltaInfo = summarizeDelta(diff);
         }
       } else if (record.type === "delta") {
-        if (!current) throw new Error("Delta record before any keyframe");
+        if (!current) throw new Error("Delta frame before any keyframe");
         deltaInfo = summarizeDelta(record.payload);
         current = applySnapshotDiff(current, record.payload, record.timestamp);
       }

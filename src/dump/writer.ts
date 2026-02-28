@@ -12,8 +12,8 @@ import { dirname } from "node:path";
 import type { FileSink } from "bun";
 import type { Snapshot, SnapshotDelta } from "../vt/snapshot.ts";
 import { computeSnapshotDiff } from "../vt/snapshot.ts";
-import type { HeaderPayload } from "./record.ts";
-import { encodeRecord } from "./record.ts";
+import type { HeaderPayload } from "./frame.ts";
+import { encodeFrame } from "./frame.ts";
 
 /** Options for controlling keyframe insertion policy. */
 export interface KeyframePolicy {
@@ -29,8 +29,8 @@ export interface KeyframePolicy {
 /**
  * Append-only binary dump writer.
  *
- * Opens the file and writes a header record on construction, then accepts a
- * sequence of keyframe and delta records via {@link write}. Keyframes are
+ * Opens the file and writes a header frame on construction, then accepts a
+ * sequence of keyframe and delta frames via {@link write}. Keyframes are
  * inserted automatically based on the configured policy.
  */
 export class DumpWriter {
@@ -44,10 +44,10 @@ export class DumpWriter {
   private lastKeyframeSize = 0;
 
   /**
-   * Open the file and write the header record.
+   * Open the file and write the header frame.
    *
    * @param filePath - Path to the output file
-   * @param header - Session metadata to write as the first record
+   * @param header - Session metadata to write as the first frame
    * @param options - Keyframe insertion policy options
    */
   constructor(
@@ -61,7 +61,7 @@ export class DumpWriter {
     mkdirSync(dirname(filePath), { recursive: true });
     this.writer = Bun.file(filePath).writer();
     this.writer.write(
-      encodeRecord({ type: "header", timestamp: Date.now(), payload: header }),
+      encodeFrame({ type: "header", timestamp: Date.now(), payload: header }),
     );
   }
 
@@ -92,7 +92,7 @@ export class DumpWriter {
 
     if (delta !== null) {
       // Delta encoding against the previous snapshot
-      const frame = encodeRecord({
+      const frame = encodeFrame({
         type: "delta",
         timestamp: snapshot.timestamp,
         payload: delta,
@@ -102,7 +102,7 @@ export class DumpWriter {
     } else {
       // Keyframe: first snapshot, policy threshold, or delta not expressible
       const { timestamp: _, ...rest } = snapshot;
-      const frame = encodeRecord({
+      const frame = encodeFrame({
         type: "keyframe",
         timestamp: snapshot.timestamp,
         payload: rest,
@@ -138,7 +138,7 @@ export class DumpWriter {
    * Write a header and a sequence of snapshots to a dump file in one call.
    *
    * @param filePath - Path to the output file
-   * @param header - Session metadata for the header record
+   * @param header - Session metadata for the header frame
    * @param snapshots - Snapshots to write
    * @param options - Keyframe insertion policy options
    */

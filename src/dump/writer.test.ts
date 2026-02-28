@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { useTempDir } from "../__testing.ts";
 import { snapshot } from "../vt/__testing.ts";
-import { decodeRecord } from "./record.ts";
+import { decodeFrame } from "./frame.ts";
 import { DumpWriter } from "./writer.ts";
 
 async function readRecords(
@@ -11,11 +11,11 @@ async function readRecords(
   const records: { type: string; timestamp: number }[] = [];
   let offset = 0;
   while (offset < buf.length) {
-    const result = decodeRecord(buf, offset);
+    const result = decodeFrame(buf, offset);
     if (!result) break;
     records.push({
-      type: result.record.type,
-      timestamp: result.record.timestamp,
+      type: result.frame.type,
+      timestamp: result.frame.timestamp,
     });
     offset = result.nextOffset;
   }

@@ -1,5 +1,5 @@
 /**
- * Encoding and decoding of individual framed records in a dump file.
+ * Encoding and decoding of individual frames in a dump file.
  *
  * @module
  */
@@ -7,31 +7,31 @@
 import { Packr, Unpackr } from "msgpackr";
 import type { Snapshot, SnapshotDelta } from "../vt/snapshot.ts";
 
-/** A decoded record from a dump file. */
-export type DumpRecord = HeaderRecord | KeyframeRecord | DeltaRecord;
+/** A decoded frame from a dump file. */
+export type DumpFrame = Header | Keyframe | Delta;
 
-/** Session metadata stored in a header record. */
+/** Session metadata stored in a header frame. */
 export interface HeaderPayload {
   /** The command that was spawned (e.g. `["claude"]`). */
   command: string[];
 }
 
-/** A header record containing session metadata. */
-export interface HeaderRecord {
+/** A header frame containing session metadata. */
+export interface Header {
   type: "header";
   timestamp: number;
   payload: HeaderPayload;
 }
 
-/** A keyframe record containing a full snapshot (without timestamp). */
-export interface KeyframeRecord {
+/** A keyframe containing a full snapshot (without timestamp). */
+export interface Keyframe {
   type: "keyframe";
   timestamp: number;
   payload: Omit<Snapshot, "timestamp">;
 }
 
-/** A delta record containing the difference from the previous snapshot. */
-export interface DeltaRecord {
+/** A delta frame containing the difference from the previous snapshot. */
+export interface Delta {
   type: "delta";
   timestamp: number;
   payload: SnapshotDelta;
@@ -44,20 +44,20 @@ const unpackr = new Unpackr();
 // Frame header size in bytes: type (1) + timestamp (8) + length (4).
 const FRAME_HEADER_SIZE = 13;
 
-// Wire record type constants
+// Wire frame type constants
 const HEADER = 0x01;
 const KEYFRAME = 0x02;
 const DELTA = 0x03;
 
 /**
- * Encode a record into a framed binary representation.
+ * Encode a frame into a framed binary representation.
  *
- * @param record - The record to encode
- * @returns A buffer containing the complete framed record
+ * @param frame - The frame to encode
+ * @returns A buffer containing the complete frame
  */
-export function encodeRecord(record: DumpRecord): Uint8Array {
+export function encodeFrame(frame: DumpFrame): Uint8Array {
   let typeTag: number;
-  switch (record.type) {
+  switch (frame.type) {
     case "header":
       typeTag = HEADER;
       break;
@@ -69,35 +69,35 @@ export function encodeRecord(record: DumpRecord): Uint8Array {
       break;
   }
 
-  const payload: Uint8Array = packr.pack(record.payload);
-  const frame = new Uint8Array(FRAME_HEADER_SIZE + payload.length);
-  const view = new DataView(frame.buffer, frame.byteOffset, frame.byteLength);
-  frame[0] = typeTag;
-  view.setFloat64(1, record.timestamp, false); // big-endian
+  const payload: Uint8Array = packr.pack(frame.payload);
+  const buf = new Uint8Array(FRAME_HEADER_SIZE + payload.length);
+  const view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  buf[0] = typeTag;
+  view.setFloat64(1, frame.timestamp, false); // big-endian
   view.setUint32(9, payload.length, false); // big-endian
-  frame.set(payload, FRAME_HEADER_SIZE);
-  return frame;
+  buf.set(payload, FRAME_HEADER_SIZE);
+  return buf;
 }
 
-/** Result of decoding a single record from a buffer. */
+/** Result of decoding a single frame from a buffer. */
 export interface DecodeResult {
-  /** The decoded record. */
-  record: DumpRecord;
-  /** Byte offset of the next record in the buffer. */
+  /** The decoded frame. */
+  frame: DumpFrame;
+  /** Byte offset of the next frame in the buffer. */
   nextOffset: number;
 }
 
 /**
- * Decode a record frame at the given offset.
+ * Decode a frame at the given offset.
  *
  * Payload deserialization is deferred until the `payload` property is accessed
- * (lazy getter with caching). Unknown record types return `null`.
+ * (lazy getter with caching). Unknown frame types return `null`.
  *
  * @param buffer - The buffer to read from
  * @param offset - Byte offset into the buffer
- * @returns The decoded record and next offset, or `null` if insufficient data or unknown type
+ * @returns The decoded frame and next offset, or `null` if insufficient data or unknown type
  */
-export function decodeRecord(
+export function decodeFrame(
   buffer: Uint8Array,
   offset: number,
 ): DecodeResult | null {
@@ -113,7 +113,7 @@ export function decodeRecord(
   const nextOffset = offset + FRAME_HEADER_SIZE + length;
   if (nextOffset > buffer.length) return null;
 
-  let type: DumpRecord["type"];
+  let type: DumpFrame["type"];
   switch (typeTag) {
     case HEADER:
       type = "header";
@@ -141,13 +141,13 @@ export function decodeRecord(
     return cached;
   };
 
-  const record = {
+  const frame = {
     type,
     timestamp,
     get payload() {
       return lazyPayload();
     },
-  } as DumpRecord;
+  } as DumpFrame;
 
-  return { record, nextOffset };
+  return { frame, nextOffset };
 }
