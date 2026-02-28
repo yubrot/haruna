@@ -49,7 +49,7 @@ scene's `encodeInput` to produce PTY bytes (input path).
 
 ```sh
 bun install              # Install dependencies
-bun run build            # produces ./haruna
+bun run build            # produces out/haruna
 bun run install          # build + install to ~/.local/bin
 ```
 
