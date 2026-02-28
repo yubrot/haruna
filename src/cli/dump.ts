@@ -4,9 +4,11 @@
  * @module
  */
 
+import { Config } from "../config.ts";
 import type { DumpQuery, DumpResult } from "../dump/query.ts";
 import { queryDump } from "../dump/query.ts";
 import type { Scene } from "../scene/interface.ts";
+import { loadScenes } from "../scene/loader.ts";
 import { formatDate, formatTime } from "../util/time.ts";
 
 /** Parsed dump CLI options with all defaults resolved. */
@@ -56,8 +58,16 @@ export async function runDump(args: DumpArgs): Promise<number> {
 
 /** Build a {@link DumpQuery} from resolved CLI arguments, loading scenes if requested. */
 async function buildQuery(args: DumpArgs): Promise<DumpQuery> {
-  const scenes: Scene[] | null = null;
-  // TODO: handle scenes
+  let scenes: Scene[] | null = null;
+  if (args.scene) {
+    const cwd = process.cwd();
+    const config = await Config.load(cwd);
+    const resolved = await config.resolveSceneEntries(cwd);
+    scenes = await loadScenes(resolved, {
+      _mode: "replay",
+      _command: [],
+    });
+  }
 
   return {
     file: args.file,
