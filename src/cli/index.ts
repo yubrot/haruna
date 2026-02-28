@@ -1,7 +1,9 @@
+import { resolve } from "node:path";
 import { program } from "commander";
 import { Gateway } from "../gateway.ts";
 import { type PtySession, runPty } from "../pty/index.ts";
 import { VirtualTerminal } from "../vt/index.ts";
+import { DumpChannel } from "../channel/dump.ts";
 
 program
   .name("haruna")
@@ -14,6 +16,12 @@ program
     const gateway = new Gateway({
       write: (bytes) => session?.write(bytes),
     });
+    await gateway.replaceChannels([
+      new DumpChannel({
+        filePath: resolve(".haruna-dump", `${Date.now()}.dump`),
+        command: [command, ...args],
+      }),
+    ]);
 
     const vt = new VirtualTerminal({
       cols: process.stdout.columns || 80,
