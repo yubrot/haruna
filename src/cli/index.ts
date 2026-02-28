@@ -9,6 +9,7 @@
 import { Command, InvalidArgumentError } from "commander";
 import { runDump } from "./dump.ts";
 import { runExec } from "./exec.ts";
+import { runReplay } from "./replay.ts";
 
 const program = new Command();
 
@@ -28,6 +29,15 @@ program
   .action(async (command: string[]) => {
     const cmd = command.length > 0 ? command : [process.env.SHELL || "/bin/sh"];
     process.exit(await runExec(cmd));
+  });
+
+// replay
+program
+  .command("replay")
+  .description("Replay a dump file through the event pipeline")
+  .argument("<file>", "dump file path")
+  .action(async (file: string) => {
+    process.exit(await runReplay(file));
   });
 
 // dump
