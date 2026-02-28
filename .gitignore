@@ -35,3 +35,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # haruna temporary files
 .haruna-dump/
+
+# haruna configuration files
+.haruna.yml
+.haruna.yaml

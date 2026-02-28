@@ -1,3 +1,7 @@
+@README.md covers the concept of this repository.
+
+# Tools
+
 Default to using Bun instead of Node.js.
 
 - Use `bun <file>` instead of `node <file>` or `ts-node <file>`
@@ -9,22 +13,24 @@ Default to using Bun instead of Node.js.
 - Use `bunx <package> <command>` instead of `npx <package> <command>`
 - Bun automatically loads .env, so don't use dotenv.
 
-## Testing
+# Core Modules
 
-Use `bun test` to run tests.
-Test files are colocated with their implementation (e.g., `src/pty/index.test.ts` next to `src/pty/index.ts`).
+| Module              | Path             | Role                                |
+| ------------------- | ---------------- | ----------------------------------- |
+| **PTY**             | `src/pty/`       | Spawns a child in a pseudo-terminal |
+| **VirtualTerminal** | `src/vt/`        | VT emulator → `Snapshot` on change  |
+| **Scene**           | `src/scene/`     | Snapshot → semantic events          |
+| **Channels**        | `src/channel/`   | Bidirectional I/O bridges           |
+| **Gateway**         | `src/gateway.ts` | Orchestrates Scene ↔ Channel flow   |
 
-```ts#index.test.ts
-import { test, expect } from "bun:test";
-
-test("hello world", () => {
-  expect(1).toBe(1);
-});
-```
-
-## Code Style
+# Code Style
 
 - Do not use `biome-ignore` comments. Fix the code to satisfy the linter instead.
 - JSDoc comments describe the **contract** (WHAT/WHEN), not the implementation (HOW).
 - Implementation details that need documentation belong in inline code comments.
 - Do not re-export. Import directly from the module that defines the symbol.
+
+# Testing
+
+Use `bun test` to run tests.
+Test files are colocated with their implementation (e.g., `src/pty/index.test.ts` next to `src/pty/index.ts`).
