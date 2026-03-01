@@ -181,9 +181,8 @@ describe("formatMessageContent", () => {
 });
 
 describe("formatQuestion", () => {
-  test("formats with header and options", () => {
+  test("formats with options", () => {
     const result = formatQuestion({
-      header: "Pick one",
       question: "Which color?",
       options: [
         { label: "Red", description: "Warm" },
@@ -192,10 +191,6 @@ describe("formatQuestion", () => {
     });
     expect(result).toMatchObject({
       blocks: [
-        {
-          type: "header",
-          text: { type: "plain_text", text: "Pick one", emoji: true },
-        },
         {
           type: "rich_text",
           elements: [
@@ -216,17 +211,6 @@ describe("formatQuestion", () => {
       ],
       text: "Which color?",
     });
-  });
-
-  test("formats without header", () => {
-    const result = formatQuestion({
-      question: "Continue?",
-      options: [{ label: "Yes" }, { label: "No" }],
-    });
-    expect(result).toMatchObject({
-      blocks: [{ type: "rich_text" }],
-    });
-    expect(result.blocks).toHaveLength(1);
   });
 
   test("formats options without descriptions", () => {

@@ -224,21 +224,13 @@ export function formatMessageContent(
  * Format a question event into a {@link SlackMessage}.
  *
  * @param event - Question payload
- * @returns Slack message with header (if present), question body, and option list
+ * @returns Slack message with question body and option list
  */
 export function formatQuestion(event: {
-  header?: string;
   question: string;
   options: { label: string; description?: string }[];
 }): SlackMessage {
   const blocks: SlackBlock[] = [];
-
-  if (event.header) {
-    blocks.push({
-      type: "header",
-      text: { type: "plain_text", text: event.header, emoji: true },
-    });
-  }
 
   const bodyElements: SlackRichElement[] = [{ type: "text", text: event.question }];
   pushOptionElements(bodyElements, event.options);

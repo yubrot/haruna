@@ -190,8 +190,6 @@ export interface InputChanged {
 /** A new question appeared in the scene. */
 export interface QuestionCreated {
   type: "question_created";
-  /** Optional header text above the question. */
-  header?: string;
   /** The question text. */
   question: string;
   /** Available options. */
@@ -203,8 +201,6 @@ export interface QuestionCreated {
 /** The last (most recent) question's content changed. */
 export interface LastQuestionUpdated {
   type: "last_question_updated";
-  /** Optional header text above the question. */
-  header?: string;
   /** The question text. */
   question: string;
   /** Available options. */

@@ -35,7 +35,6 @@ interface MessageItem {
 
 interface QuestionItem {
   type: "question";
-  header: string;
   question: string;
   options: Option[];
   selected: number;
@@ -112,7 +111,6 @@ function applyEvent(state: InteractiveState, event: SceneEvent): InteractiveStat
           ...state.items,
           {
             type: "question",
-            header: event.header ?? "",
             question: event.question,
             options: event.options,
             selected: event.selected ?? -1,
@@ -124,7 +122,6 @@ function applyEvent(state: InteractiveState, event: SceneEvent): InteractiveStat
         ...state,
         items: updateLast(state.items, "question", (item) => ({
           ...item,
-          header: event.header ?? "",
           question: event.question,
           options: event.options,
           selected: event.selected ?? -1,
@@ -482,7 +479,6 @@ function DisplayItemView({
   if (item.type === "question") {
     return (
       <div class="question">
-        {item.header && <div class="header">{item.header}</div>}
         <div class="text">{item.question}</div>
         <OptionsList
           options={item.options}
