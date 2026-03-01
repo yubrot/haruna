@@ -62,6 +62,51 @@ const ConfigSchema = v.object({
             dir: v.optional(v.string()),
             path: v.optional(v.string()),
           }),
+          v.object({
+            type: v.literal("slack"),
+            appToken: v.optional(
+              v.pipe(
+                v.string(),
+                v.minLength(
+                  1,
+                  "appToken is required (set in config or $SLACK_APP_TOKEN)",
+                ),
+              ),
+              () => process.env.SLACK_APP_TOKEN ?? "",
+            ),
+            botToken: v.optional(
+              v.pipe(
+                v.string(),
+                v.minLength(
+                  1,
+                  "botToken is required (set in config or $SLACK_BOT_TOKEN)",
+                ),
+              ),
+              () => process.env.SLACK_BOT_TOKEN ?? "",
+            ),
+            channel: v.optional(
+              v.pipe(
+                v.string(),
+                v.minLength(
+                  1,
+                  "channel is required (set in config or $SLACK_CHANNEL)",
+                ),
+              ),
+              () => process.env.SLACK_CHANNEL ?? "",
+            ),
+            thread: v.optional(v.string(), () => process.env.SLACK_THREAD),
+            allowUsers: v.optional(
+              v.pipe(
+                v.union([v.string(), v.array(v.string())]),
+                v.transform((val) => (Array.isArray(val) ? val : [val])),
+              ),
+              () => ["*"],
+            ),
+            allowOtherBots: v.optional(v.boolean(), false),
+            botUser: v.optional(v.string(), () => process.env.SLACK_BOT_USER),
+            requireMention: v.optional(v.boolean(), false),
+            echo: v.optional(v.boolean(), false),
+          }),
         ]),
       ),
     ),

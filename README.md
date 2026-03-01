@@ -87,6 +87,9 @@ The config file and all dynamically loaded scene `.ts` files are watched for cha
 ```yaml
 channels:
   - dump # for .claude/skills/haruna-scene-dev, if you are interested
+  - type: slack
+    allowUsers:
+      - U0123ABCDE
 ```
 
 <details><summary>Full Example</summary>
@@ -156,7 +159,7 @@ the full workflow — from discovery through fixture creation, implementation, t
 
 ### Available `channels`
 
-- TODO: `slack`
+- [`slack`](src/channel/slack/README.md) — Connects Slack
 - TODO: `discord`
 - [`web`](src/channel/web/README.md) — HTTP server + WebSocket bridge. Serves a browser-based client and streams events via WebSocket
 - [`dump`](src/channel/dump/README.md) — Records binary snapshots to disk for scene development and debugging

@@ -9,7 +9,7 @@ import { resolve } from "node:path";
 import type { ChannelEntry } from "../config.ts";
 import { DumpChannel } from "./dump/index.ts";
 import type { Channel } from "./interface.ts";
-
+import { SlackChannel } from "./slack/index.ts";
 import { WebChannel } from "./web/index.ts";
 
 /**
@@ -29,7 +29,7 @@ export interface ChannelConfig {
  *
  * Iterates over channel entries and constructs the appropriate channel
  * implementation for each. Mode-dependent logic (e.g. dump channel
- * exclusion during replay) is handled here.
+ * exclusion during replay, web channel defaults) is handled here.
  *
  * @param entries - Channel entries from the configuration
  * @param config - Shared runtime configuration
@@ -59,6 +59,10 @@ export function loadChannels(
           entry.path ??
           resolve(entry.dir ?? ".haruna-dump", `${Date.now()}.dump`);
         channels.push(new DumpChannel({ filePath, command: config._command }));
+        break;
+      }
+      case "slack": {
+        channels.push(new SlackChannel(entry));
         break;
       }
     }
