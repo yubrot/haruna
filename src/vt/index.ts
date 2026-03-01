@@ -4,8 +4,8 @@
  * @module
  */
 
+import { Scheduler } from "../util/scheduler.ts";
 import { Emulator } from "./emulator.ts";
-import { FlushScheduler } from "./flush-scheduler.ts";
 import type { Snapshot } from "./snapshot.ts";
 import { snapshotsEqual } from "./snapshot.ts";
 
@@ -41,7 +41,7 @@ export interface VirtualTerminalOptions {
  */
 export class VirtualTerminal {
   private emulator: Emulator;
-  private scheduler: FlushScheduler;
+  private scheduler: Scheduler;
   private onChange?: (
     snapshot: Snapshot,
     previous: Snapshot | undefined,
@@ -63,10 +63,10 @@ export class VirtualTerminal {
       rows: options.rows,
       scrollback: options.scrollback,
     });
-    this.scheduler = new FlushScheduler({
+    this.scheduler = new Scheduler({
       debounceMs: options.debounceMs,
       maxIntervalMs: options.maxIntervalMs,
-      onFlush: () => {
+      callback: () => {
         this.captureNeeded = true;
         if (!this.runningCapture) {
           this.runningCapture = this.runCapture();
@@ -86,7 +86,7 @@ export class VirtualTerminal {
   write(data: Uint8Array): void {
     if (this.disposed) return;
     this.emulator.write(data);
-    this.scheduler.notify();
+    this.scheduler.schedule();
   }
 
   /**
