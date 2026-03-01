@@ -70,7 +70,7 @@ Custom properties come from the config file's object-form scene entries:
 
 ```yaml
 scenes:
-  - src: shell
+  - type: shell
     prompt: "^\\$"
     promptPrefix: "^\\[haruna\\]$"
 ```

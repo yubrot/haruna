@@ -189,8 +189,8 @@ describe("Config", () => {
     test("accepts channel string shorthand", () => {
       const source = parseConfig({ channels: ["dump", "web"] });
       expect(source.channels).toMatchObject([
-        { name: "dump" },
-        { name: "web", port: 0, host: "127.0.0.1" },
+        { type: "dump" },
+        { type: "web", port: 0, host: "127.0.0.1" },
       ]);
     });
 
@@ -200,10 +200,10 @@ describe("Config", () => {
 
     test("accepts web channel object with custom properties", () => {
       const source = parseConfig({
-        channels: [{ name: "web", port: 9000, host: "0.0.0.0" }],
+        channels: [{ type: "web", port: 9000, host: "0.0.0.0" }],
       });
       expect(source.channels).toMatchObject([
-        { name: "web", port: 9000, host: "0.0.0.0" },
+        { type: "web", port: 9000, host: "0.0.0.0" },
       ]);
     });
   });
@@ -284,8 +284,8 @@ describe("Config", () => {
       writeScene(dir, "other.ts", "other");
 
       const result = await configWith([
-        { src: "*.ts", color: "red" },
-        { src: "scene.ts", size: 10 },
+        { type: "*.ts", color: "red" },
+        { type: "scene.ts", size: 10 },
       ]).resolveSceneEntries();
       expect(result.files.size).toBe(2);
       const fileEntries = new Map(

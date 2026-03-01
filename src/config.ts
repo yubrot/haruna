@@ -36,7 +36,10 @@ const ConfigSchema = v.object({
   ),
   scenes: v.optional(
     v.array(
-      v.union([v.string(), v.objectWithRest({ src: v.string() }, v.unknown())]),
+      v.union([
+        v.string(),
+        v.objectWithRest({ type: v.string() }, v.unknown()),
+      ]),
     ),
     ["builtin", ".haruna-scene/*.ts"],
   ),
@@ -45,17 +48,17 @@ const ConfigSchema = v.object({
       v.pipe(
         v.union([v.string(), v.record(v.string(), v.unknown())]),
         v.transform((input) =>
-          typeof input === "string" ? { name: input } : input,
+          typeof input === "string" ? { type: input } : input,
         ),
-        v.variant("name", [
+        v.variant("type", [
           v.object({
-            name: v.literal("web"),
+            type: v.literal("web"),
             port: v.optional(v.pipe(v.number(), v.integer(), v.minValue(0)), 0),
             host: v.optional(v.string(), "127.0.0.1"),
             waitForClient: v.optional(v.boolean()),
           }),
           v.object({
-            name: v.literal("dump"),
+            type: v.literal("dump"),
             dir: v.optional(v.string()),
             path: v.optional(v.string()),
           }),
@@ -72,10 +75,10 @@ type ConfigSource = v.InferOutput<typeof ConfigSchema>;
 /** Terminal emulator settings. */
 export type TerminalConfig = ConfigSource["terminal"];
 
-/** Scene entry — either a plain DSL string or an object with `src` and extras. */
+/** Scene entry — either a plain DSL string or an object with `type` and extras. */
 export type SceneEntry = ConfigSource["scenes"][number];
 
-/** Channel entry — discriminated union on the `name` field. */
+/** Channel entry — discriminated union on the `type` field. */
 export type ChannelEntry = ConfigSource["channels"][number];
 
 /**
@@ -169,7 +172,7 @@ export class Config {
    *
    * Builtin aliases are expanded via the registry. File globs are expanded
    * against {@link baseDir}. Entries prefixed with `!` are treated as exclusions.
-   * Per-entry properties (any key other than `src`) are accumulated and
+   * Per-entry properties (any key other than `type`) are accumulated and
    * available in the result maps.
    *
    * @returns Resolved builtin names and file paths with their properties
@@ -181,21 +184,21 @@ export class Config {
     const excludedFileGlobs: string[] = [];
 
     for (const entry of this.scenes) {
-      const { src, ...props } =
-        typeof entry === "string" ? { src: entry } : entry;
+      const { type, ...props } =
+        typeof entry === "string" ? { type: entry } : entry;
 
-      if (src.startsWith("!")) {
-        const excludedSrc = src.substring(1);
-        if (builtinSceneRegistry.has(excludedSrc)) {
-          excludedBuiltinAliases.push(excludedSrc);
+      if (type.startsWith("!")) {
+        const excluded = type.substring(1);
+        if (builtinSceneRegistry.has(excluded)) {
+          excludedBuiltinAliases.push(excluded);
         } else {
-          excludedFileGlobs.push(excludedSrc);
+          excludedFileGlobs.push(excluded);
         }
       } else {
-        if (builtinSceneRegistry.has(src)) {
-          builtinAliases.set(src, { ...builtinAliases.get(src), ...props });
+        if (builtinSceneRegistry.has(type)) {
+          builtinAliases.set(type, { ...builtinAliases.get(type), ...props });
         } else {
-          fileGlobs.set(src, { ...fileGlobs.get(src), ...props });
+          fileGlobs.set(type, { ...fileGlobs.get(type), ...props });
         }
       }
     }

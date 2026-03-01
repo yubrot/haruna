@@ -28,7 +28,7 @@ export async function runReplay(file: string, config: Config): Promise<number> {
     channelConfig: { _mode: "replay", _command: [] },
   });
 
-  const hasChannels = config.channels.some((c) => c.name !== "dump");
+  const hasChannels = config.channels.some((c) => c.type !== "dump");
   if (hasChannels) {
     console.error("[haruna] waiting for client connection...");
   }

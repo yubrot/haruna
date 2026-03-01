@@ -202,7 +202,7 @@ describe("loadScenes", () => {
     );
 
     const resolved = await configWith(
-      [{ src: "config-scene.ts", color: "blue" }],
+      [{ type: "config-scene.ts", color: "blue" }],
       dir,
     ).resolveSceneEntries();
     const scenes = await loadScenes(resolved, defaultConfig);

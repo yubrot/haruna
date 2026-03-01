@@ -9,6 +9,7 @@ import { resolve } from "node:path";
 import type { ChannelEntry } from "../config.ts";
 import { DumpChannel } from "./dump.ts";
 import type { Channel } from "./interface.ts";
+
 import { WebChannel } from "./web/index.ts";
 
 /**
@@ -40,7 +41,7 @@ export function loadChannels(
 ): Channel[] {
   const channels: Channel[] = [];
   for (const entry of entries) {
-    switch (entry.name) {
+    switch (entry.type) {
       case "web": {
         const defaultWait = config._mode === "replay";
         channels.push(

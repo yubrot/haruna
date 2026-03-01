@@ -36,7 +36,7 @@ describe("Attacher", () => {
     const cwd = process.cwd();
     const config = new Config(
       parseConfig({
-        channels: [{ name: "dump" }],
+        channels: [{ type: "dump" }],
       }),
       null,
       cwd,
