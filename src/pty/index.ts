@@ -8,8 +8,6 @@
  * @module
  */
 
-import { scanChunk } from "./signal-bridge.ts";
-
 const textEncoder = new TextEncoder();
 
 /** Options for creating a PTY session. */
@@ -39,9 +37,8 @@ export interface PtySession {
   /**
    * Write data directly to the PTY.
    *
-   * Used for injecting input from external sources.
-   * Unlike local stdin, this bypasses the signal bridge — bytes are
-   * forwarded as-is to the PTY. No-op after the child process exits.
+   * Used for injecting input from external sources (e.g. Channels).
+   * Bytes are forwarded as-is to the PTY. No-op after the child process exits.
    *
    * @param data - Bytes or text to send to the PTY
    */
@@ -77,7 +74,7 @@ export function runPty(options: PtyOptions): PtySession {
   const disposeCallbacks: (() => void)[] = [];
 
   // Terminal options must be passed inline (not a pre-created instance)
-  // so that Bun sets up the controlling terminal correctly (bun#25779).
+  // so that Bun sets up the controlling terminal correctly.
   const proc = Bun.spawn(command, {
     terminal: {
       cols: options.cols ?? (passthrough ? process.stdout.columns || 80 : 80),
@@ -107,22 +104,8 @@ export function runPty(options: PtyOptions): PtySession {
       disposeCallbacks.push(() => process.stdin.setRawMode(false));
     }
 
-    // POSIX ISIG bit in termios c_lflag
-    const ISIG = 0x01;
-
     const onStdinData = (rawData: Buffer) => {
-      if (terminal.localFlags & ISIG) {
-        // Cooked mode: Bun.Terminal.write() bypasses line discipline
-        // (bun#25779), so deliver signals manually and strip control
-        // characters from the forwarded data.
-        const { signals, data } = scanChunk(rawData);
-        for (const signal of signals) safeKill(proc.pid, signal);
-        for (const segment of data) terminal.write(segment);
-      } else {
-        // Raw mode: the child handles control characters itself
-        // (e.g. Claude Code's "press again to exit" on Ctrl+C).
-        terminal.write(rawData);
-      }
+      terminal.write(rawData);
     };
     process.stdin.on("data", onStdinData);
     disposeCallbacks.push(() => process.stdin.off("data", onStdinData));
