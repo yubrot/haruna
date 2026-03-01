@@ -1,0 +1,18 @@
+# Claude Code mode cycle: ? → ⏵⏵ → ⏸ → ? (shift+tab to cycle).
+command: [env, -u, CLAUDECODE, claude]
+cols: 80
+rows: 24
+scrollback: 200
+steps:
+  - wait: { stable: 2000, timeout: 60000 }
+  - snapshot # 0: shortcuts (?)
+  - input: "\x1b[Z" # Shift+Tab → accept edits
+  - wait: { stable: 2000, timeout: 10000 }
+  - snapshot # 1: accept edits (⏵⏵)
+  - input: "\x1b[Z" # Shift+Tab → plan mode
+  - wait: { stable: 2000, timeout: 10000 }
+  - snapshot # 2: plan mode (⏸)
+  - input: "\x1b[Z" # Shift+Tab → back to shortcuts
+  - wait: { stable: 2000, timeout: 10000 }
+  - snapshot # 3: shortcuts (?)
+  - input: "/exit\n"

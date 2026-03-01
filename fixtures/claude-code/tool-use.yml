@@ -1,0 +1,14 @@
+# Claude Code tool use: Read tool invocation with output.
+command: [env, -u, CLAUDECODE, claude]
+cols: 80
+rows: 24
+scrollback: 200
+steps:
+  - wait: { stable: 2000, timeout: 60000 }
+  - snapshot
+  - input: "Read the file fixtures/claude-code/files/tool-use.md using the Read tool. Do not do anything else."
+  - wait: { stable: 2000, timeout: 10000 }
+  - input: "\r"
+  - wait: { stable: 2000, timeout: 180000 }
+  - snapshot
+  - input: "/exit\n"

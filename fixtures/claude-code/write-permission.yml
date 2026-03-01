@@ -1,0 +1,20 @@
+# Claude Code permission prompt: file write requiring approval (rejected).
+command: [env, -u, CLAUDECODE, claude]
+cols: 80
+rows: 24
+scrollback: 200
+steps:
+  - wait: { stable: 2000, timeout: 60000 }
+  - snapshot # 0: idle
+  - input: "Write the text \"hello from haruna\" to the file /tmp/haruna-claude-code-write. Do not do anything else."
+  - wait: { stable: 2000, timeout: 10000 }
+  - input: "\r"
+  - wait: { stable: 2000, timeout: 120000 }
+  - snapshot # 1: write permission prompt
+  - input: "\x1b[A" # Up arrow wraps to last option (No)
+  - wait: { stable: 2000 }
+  - snapshot # 2: No selected
+  - input: "\r" # reject
+  - wait: { stable: 2000, timeout: 180000 }
+  - snapshot # 3: back to idle
+  - input: "/exit\n"

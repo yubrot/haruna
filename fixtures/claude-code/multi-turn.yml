@@ -1,0 +1,19 @@
+# Claude Code multi-turn: two exchanges.
+command: [env, -u, CLAUDECODE, claude]
+cols: 80
+rows: 24
+scrollback: 200
+steps:
+  - wait: { stable: 2000, timeout: 60000 }
+  - snapshot
+  - input: "Reply with exactly: \"First response.\" Do not use any tools."
+  - wait: { stable: 2000, timeout: 10000 }
+  - input: "\r"
+  - wait: { stable: 2000, timeout: 180000 }
+  - snapshot
+  - input: "Reply with exactly: \"Second response.\" Do not use any tools."
+  - wait: { stable: 2000, timeout: 10000 }
+  - input: "\r"
+  - wait: { stable: 2000, timeout: 180000 }
+  - snapshot
+  - input: "/exit\n"

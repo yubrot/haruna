@@ -1,0 +1,14 @@
+# Claude Code ! prompt: direct shell command execution.
+command: [env, -u, CLAUDECODE, claude]
+cols: 80
+rows: 24
+scrollback: 200
+steps:
+  - wait: { stable: 2000, timeout: 60000 }
+  - snapshot # 0: idle
+  - input: "! cat tsconfig.json"
+  - wait: { stable: 2000, timeout: 10000 }
+  - input: "\r"
+  - wait: { stable: 2000, timeout: 30000 }
+  - snapshot # 1: command output
+  - input: "/exit\n"

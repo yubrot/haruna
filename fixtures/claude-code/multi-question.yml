@@ -1,0 +1,29 @@
+# Claude Code multi-question UI: AskUserQuestion with multiple questions at once.
+# Claude Code displays tabbed question headers (☐/☒/✔) when multiple questions
+# are sent in a single AskUserQuestion call. After answering all questions,
+# a review screen appears with Submit/Cancel options.
+command: [env, -u, CLAUDECODE, claude]
+cols: 80
+rows: 24
+scrollback: 200
+steps:
+  - wait: { stable: 2000, timeout: 60000 }
+  - snapshot # 0: idle
+  - input: "Use AskUserQuestion to ask exactly 2 questions in one call. First question: header \"Color\", question \"Which color?\", options: Red (Warm color) and Blue (Cool color). Second question: header \"Size\", question \"Which size?\", options: Small and Large. You MUST pass both questions in the questions array of a single AskUserQuestion call. Do absolutely nothing else."
+  - wait: { stable: 2000, timeout: 10000 }
+  - input: "\r"
+  - wait: { stable: 2000, timeout: 120000 }
+  - snapshot # 1: first question (Color) with tab headers ☐ Color ☐ Size
+  - input: "\x1b[B" # Down arrow to select Blue
+  - wait: { stable: 2000 }
+  - snapshot # 2: first question with selection changed to Blue
+  - input: "\r" # Confirm first question
+  - wait: { stable: 2000, timeout: 30000 }
+  - snapshot # 3: second question (Size) visible, ☒ Color ☐ Size
+  - input: "\r" # Confirm second question (select Small)
+  - wait: { stable: 2000, timeout: 30000 }
+  - snapshot # 4: review screen with ☒ Color ☒ Size ✔ Submit
+  - input: "\r" # Submit answers
+  - wait: { stable: 2000, timeout: 180000 }
+  - snapshot # 5: response after submitting
+  - input: "/exit\n"

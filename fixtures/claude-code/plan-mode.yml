@@ -1,0 +1,52 @@
+# Claude Code plan mode full cycle + /clear recovery:
+# Shift+Tab → plan mode → implementation task → plan review → adjust → approve → output → /clear → new response.
+command: [env, -u, CLAUDECODE, claude]
+cols: 80
+rows: 24
+scrollback: 200
+steps:
+  - wait: { stable: 2000, timeout: 60000 }
+  - snapshot # 0: shortcuts (?)
+  - input: "\x1b[Z" # Shift+Tab → accept edits (⏵⏵)
+  - wait: { stable: 2000, timeout: 10000 }
+  - input: "\x1b[Z" # Shift+Tab → plan mode (⏸)
+  - wait: { stable: 2000, timeout: 10000 }
+  - snapshot # 1: plan mode idle (⏸)
+  - input: "Plan adding a --debug option to haruna exec. The --debug option works like exec but always enables the dump channel and disables all other channels."
+  - wait: { stable: 2000, timeout: 10000 }
+  - input: "\r"
+  # Wait for plan review UI (ExitPlanMode)
+  - wait: { stable: 2000, timeout: 600000 }
+  - snapshot # 2: plan review UI
+  # Move to "Type here to tell Claude what to change" (option 4)
+  - input: "\x1b[A" # ↑ wraps to last option
+  - wait: { stable: 2000 }
+  - snapshot # 3: option 4 selected
+  # Type adjustment
+  - input: "Do not actually implement. Instead, output the plan as instructions for the user."
+  - wait: { stable: 2000, timeout: 10000 }
+  - input: "\r"
+  # Wait for updated plan
+  - wait: { stable: 2000, timeout: 600000 }
+  - snapshot # 4: updated plan review
+  # Approve (option 1 should be selected by default)
+  - input: "\r"
+  - wait: { stable: 2000, timeout: 600000 }
+  - snapshot # 5: output after approval
+  # Follow-up prompt
+  - input: "Summarize the approach briefly"
+  - wait: { stable: 2000, timeout: 10000 }
+  - input: "\r"
+  - wait: { stable: 2000, timeout: 600000 }
+  - snapshot # 6: summary response
+  # Clear conversation — generates enough scrollback to trigger contentStart > contentEnd
+  - input: "/clear\n"
+  - wait: { stable: 2000, timeout: 10000 }
+  - snapshot # 7: after /clear
+  # New prompt after clear
+  - input: "Reply with exactly: \"After clear.\" Do not use any tools."
+  - wait: { stable: 2000, timeout: 10000 }
+  - input: "\r"
+  - wait: { stable: 2000, timeout: 180000 }
+  - snapshot # 8: new response after /clear
+  - input: "/exit\n"

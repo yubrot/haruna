@@ -1,0 +1,20 @@
+# Claude Code question UI: AskUserQuestion with options.
+command: [env, -u, CLAUDECODE, claude]
+cols: 80
+rows: 24
+scrollback: 200
+steps:
+  - wait: { stable: 2000, timeout: 60000 }
+  - snapshot
+  - input: "Use AskUserQuestion to ask: \"Which option?\" with options: Option A (First), Option B (Second), Option C (Third). Do nothing else."
+  - wait: { stable: 2000, timeout: 10000 }
+  - input: "\r"
+  - wait: { stable: 2000, timeout: 120000 }
+  - snapshot
+  - input: "\x1b[B"
+  - wait: { stable: 2000 }
+  - snapshot
+  - input: "\r"
+  - wait: { stable: 2000, timeout: 180000 }
+  - snapshot
+  - input: "/exit\n"

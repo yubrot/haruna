@@ -1,0 +1,17 @@
+# Claude Code permission prompt: Fetch requiring approval.
+command: [env, -u, CLAUDECODE, claude]
+cols: 80
+rows: 24
+scrollback: 200
+steps:
+  - wait: { stable: 2000, timeout: 60000 }
+  - snapshot # 0: idle
+  - input: "Summarize the activities on https://yubrot.github.io/. Do not do anything else."
+  - wait: { stable: 2000, timeout: 10000 }
+  - input: "\r"
+  - wait: { stable: 2000, timeout: 120000 }
+  - snapshot # 1: fetch permission prompt
+  - input: "\r" # accept
+  - wait: { stable: 2000, timeout: 180000 }
+  - snapshot # 2: back to idle
+  - input: "/exit\n"

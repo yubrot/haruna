@@ -1,0 +1,14 @@
+# Claude Code simple text response: idle → responding → idle.
+command: [env, -u, CLAUDECODE, claude]
+cols: 80
+rows: 24
+scrollback: 200
+steps:
+  - wait: { stable: 2000, timeout: 60000 }
+  - snapshot
+  - input: "Reply with exactly: \"Hello! This is a test response.\" Do not use any tools."
+  - wait: { stable: 2000, timeout: 10000 }
+  - input: "\r"
+  - wait: { stable: 2000, timeout: 180000 }
+  - snapshot
+  - input: "/exit\n"

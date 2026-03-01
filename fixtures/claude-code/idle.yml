@@ -1,0 +1,9 @@
+# Claude Code idle state: start and capture the input prompt.
+command: [env, -u, CLAUDECODE, claude]
+cols: 80
+rows: 24
+scrollback: 200
+steps:
+  - wait: { stable: 2000, timeout: 60000 }
+  - snapshot
+  - input: "/exit\n"

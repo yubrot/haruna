@@ -1,0 +1,15 @@
+# Claude Code multiline input: input area spanning multiple lines.
+command: [env, -u, CLAUDECODE, claude]
+cols: 80
+rows: 24
+scrollback: 200
+steps:
+  - wait: { stable: 2000, timeout: 60000 }
+  - snapshot
+  - input: "This is a long multiline prompt. Reply with exactly: \"Got it.\" Do not use any tools. This message needs to be long enough to wrap to multiple lines in the terminal."
+  - wait: { stable: 2000, timeout: 10000 }
+  - snapshot
+  - input: "\r"
+  - wait: { stable: 2000, timeout: 180000 }
+  - snapshot
+  - input: "/exit\n"

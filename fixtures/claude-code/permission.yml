@@ -1,0 +1,17 @@
+# Claude Code permission prompt: Bash command requiring approval.
+command: [env, -u, CLAUDECODE, claude]
+cols: 80
+rows: 24
+scrollback: 200
+steps:
+  - wait: { stable: 2000, timeout: 60000 }
+  - snapshot # 0: idle
+  - input: "Run the exact Bash command: git -C $(pwd) status. Do not do anything else."
+  - wait: { stable: 2000, timeout: 10000 }
+  - input: "\r"
+  - wait: { stable: 2000, timeout: 120000 }
+  - snapshot # 1: permission prompt
+  - input: "\r" # accept
+  - wait: { stable: 2000, timeout: 180000 }
+  - snapshot # 2: back to idle
+  - input: "/exit\n"
