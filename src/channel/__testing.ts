@@ -62,11 +62,7 @@ export function frame(messages: string[] = []): Frame {
  * @param intervalMs - Polling interval in milliseconds
  * @throws When the condition is not met within the timeout
  */
-export async function waitFor(
-  fn: () => boolean,
-  timeoutMs = 2000,
-  intervalMs = 10,
-): Promise<void> {
+export async function waitFor(fn: () => boolean, timeoutMs = 2000, intervalMs = 10): Promise<void> {
   const start = Date.now();
   while (!fn()) {
     if (Date.now() - start > timeoutMs) {

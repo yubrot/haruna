@@ -53,11 +53,7 @@ export const emptyPostState: PostState = { lastPost: null, pendingOps: [] };
  * @param echo - Whether echo events should be forwarded
  * @returns New post state after applying the event
  */
-export function applySceneEvent(
-  state: PostState,
-  event: SceneEvent,
-  echo: boolean,
-): PostState {
+export function applySceneEvent(state: PostState, event: SceneEvent, echo: boolean): PostState {
   if (!echo && "echo" in event && event.echo) return state;
 
   switch (event.type) {
@@ -131,8 +127,7 @@ function applyMessageCreated(
   }
 
   // Carry forward the active indicator
-  const indicator =
-    state.lastPost?.type === "message" ? state.lastPost.indicator : null;
+  const indicator = state.lastPost?.type === "message" ? state.lastPost.indicator : null;
   const lastPost = { type: "message" as const, base: message, indicator };
   const postMessage = indicator ? appendContext(message, indicator) : message;
   ops = pushOp(ops, { type: "post", message: postMessage });
@@ -158,9 +153,7 @@ function applyLastMessageUpdated(
   if (state.lastPost?.type !== "message") return state;
 
   const lastPost = { ...state.lastPost, base: message };
-  const updateMessage = lastPost.indicator
-    ? appendContext(message, lastPost.indicator)
-    : message;
+  const updateMessage = lastPost.indicator ? appendContext(message, lastPost.indicator) : message;
   return {
     lastPost,
     pendingOps: pushOp(state.pendingOps, {

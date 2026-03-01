@@ -243,10 +243,7 @@ const SelectSceneInputSchema = v.object({
 });
 
 /** Valibot schema for the {@link SceneInput} union. */
-const SceneInputSchema = v.union([
-  TextSceneInputSchema,
-  SelectSceneInputSchema,
-]);
+const SceneInputSchema = v.union([TextSceneInputSchema, SelectSceneInputSchema]);
 
 /** Union of all structured input types sent from channels to the system. */
 export type SceneInput = v.InferOutput<typeof SceneInputSchema>;

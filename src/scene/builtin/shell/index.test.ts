@@ -21,10 +21,7 @@ async function traceShell(
   sceneConfig: Record<string, unknown> = {},
 ): Promise<TraceEntry[]> {
   return simplifyTraceContent(
-    await traceScene(
-      shellScene({ _mode: "replay", _command: ["bash"], ...sceneConfig }),
-      dumpPath,
-    ),
+    await traceScene(shellScene({ _mode: "replay", _command: ["bash"], ...sceneConfig }), dumpPath),
   );
 }
 
@@ -32,9 +29,7 @@ describe("Shell Scene", () => {
   test("prompt-ready: detect emits InputChanged active", async () => {
     const trace = await traceShell(`${FIXTURES_DIR}/prompt-ready.dump`);
 
-    expect(trace).toMatchObject([
-      { events: [{ type: "input_changed", active: true, text: "" }] },
-    ]);
+    expect(trace).toMatchObject([{ events: [{ type: "input_changed", active: true, text: "" }] }]);
   });
 
   test("simple-command: echo produces prompt block and output block", async () => {
@@ -128,11 +123,7 @@ describe("Shell Scene", () => {
     expect(trace).toMatchObject([
       { events: [{ type: "input_changed", active: true, text: "" }] },
       {
-        events: [
-          inputOff,
-          block("$"),
-          { type: "input_changed", active: true, text: "" },
-        ],
+        events: [inputOff, block("$"), { type: "input_changed", active: true, text: "" }],
       },
     ]);
   });
@@ -149,10 +140,7 @@ describe("Shell Scene", () => {
       },
       // Snapshot 2: running → idle — remaining output + prompt
       {
-        events: [
-          textContaining("100"),
-          { type: "input_changed", active: true, text: "" },
-        ],
+        events: [textContaining("100"), { type: "input_changed", active: true, text: "" }],
       },
     ]);
   });
@@ -337,11 +325,7 @@ describe("Shell Scene", () => {
       { events: [{ type: "input_changed", active: true, text: "" }] },
       // Snapshot 1: idle → idle (virtual running) — first command output
       {
-        events: [
-          inputOff,
-          { style: "text" },
-          { type: "input_changed", active: true, text: "" },
-        ],
+        events: [inputOff, { style: "text" }, { type: "input_changed", active: true, text: "" }],
       },
       // Snapshot 2: idle → running — second command starts, output begins immediately
       {
@@ -353,10 +337,7 @@ describe("Shell Scene", () => {
       },
       // Snapshot 3: running → idle — remaining output
       {
-        events: [
-          { style: "text" },
-          { type: "input_changed", active: true, text: "" },
-        ],
+        events: [{ style: "text" }, { type: "input_changed", active: true, text: "" }],
       },
     ]);
   });

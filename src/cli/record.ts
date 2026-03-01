@@ -7,11 +7,7 @@
  */
 
 import { join, parse } from "node:path";
-import {
-  parseRecordScript,
-  type RecordScript,
-  recordDump,
-} from "../dump/recorder.ts";
+import { parseRecordScript, type RecordScript, recordDump } from "../dump/recorder.ts";
 
 /**
  * Determine the output dump file path from the script path.
@@ -33,17 +29,12 @@ export function defaultOutputPath(scriptPath: string): string {
  * @param outputPath - Path for the output dump file (optional; defaults to scriptPath with .dump extension)
  * @returns Exit code (0 on success, 1 on error)
  */
-export async function runRecord(
-  scriptPath: string,
-  outputPath?: string,
-): Promise<number> {
+export async function runRecord(scriptPath: string, outputPath?: string): Promise<number> {
   let content: string;
   try {
     content = await Bun.file(scriptPath).text();
   } catch (e) {
-    console.error(
-      `[haruna] cannot read script: ${e instanceof Error ? e.message : e}`,
-    );
+    console.error(`[haruna] cannot read script: ${e instanceof Error ? e.message : e}`);
     return 1;
   }
 
@@ -51,9 +42,7 @@ export async function runRecord(
   try {
     script = parseRecordScript(content);
   } catch (e) {
-    console.error(
-      `[haruna] invalid script: ${e instanceof Error ? e.message : e}`,
-    );
+    console.error(`[haruna] invalid script: ${e instanceof Error ? e.message : e}`);
     return 1;
   }
 

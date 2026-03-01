@@ -54,10 +54,7 @@ describe("queryDump", () => {
         records: { snapshots: 3 },
       });
       expect(result.stats?.records.keyframes).toBeGreaterThanOrEqual(1);
-      expect(
-        (result.stats?.records.keyframes ?? 0) +
-          (result.stats?.records.deltas ?? 0),
-      ).toBe(3);
+      expect((result.stats?.records.keyframes ?? 0) + (result.stats?.records.deltas ?? 0)).toBe(3);
     });
 
     test("returns null duration for empty dump", async () => {
@@ -402,9 +399,7 @@ describe("queryDump", () => {
     test("level 0: returns empty for single snapshot", async () => {
       const p = tmpFile();
       const now = 1700000000000;
-      await DumpWriter.writeAll(p, { command: ["test"] }, [
-        snapshot(["a"], { timestamp: now }),
-      ]);
+      await DumpWriter.writeAll(p, { command: ["test"] }, [snapshot(["a"], { timestamp: now })]);
 
       const diffs = await queryDiff(p, 0);
       expect(diffs.length).toBe(0);
@@ -589,9 +584,7 @@ describe("queryDump", () => {
   test("returns only requested sections", async () => {
     const p = tmpFile();
     const now = 1700000000000;
-    await DumpWriter.writeAll(p, { command: ["test"] }, [
-      snapshot(["a"], { timestamp: now }),
-    ]);
+    await DumpWriter.writeAll(p, { command: ["test"] }, [snapshot(["a"], { timestamp: now })]);
 
     const result = await queryDump({ ...baseQuery(p), stats: true });
     expect(result.stats).toBeDefined();
@@ -622,8 +615,6 @@ describe("queryDump", () => {
   });
 
   test("throws for non-existent file", async () => {
-    await expect(
-      queryDump({ ...baseQuery("/tmp/no-such-file-dump-test.dump") }),
-    ).rejects.toThrow();
+    await expect(queryDump({ ...baseQuery("/tmp/no-such-file-dump-test.dump") })).rejects.toThrow();
   });
 });

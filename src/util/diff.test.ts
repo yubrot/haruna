@@ -1,10 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  collapseDiffContext,
-  computeEditScript,
-  computeLineDiff,
-  type EditOp,
-} from "./diff.ts";
+import { collapseDiffContext, computeEditScript, computeLineDiff, type EditOp } from "./diff.ts";
 
 describe("computeEditScript", () => {
   test("empty sequences produce empty script", () => {
@@ -104,9 +99,7 @@ describe("computeEditScript", () => {
   });
 
   test("single element sequences", () => {
-    expect(computeEditScript(["A"], ["A"])).toEqual([
-      { type: "keep", fromIdx: 0, toIdx: 0 },
-    ]);
+    expect(computeEditScript(["A"], ["A"])).toEqual([{ type: "keep", fromIdx: 0, toIdx: 0 }]);
     const ops = computeEditScript(["A"], ["B"]);
     expect(applyOps(["A"], ["B"], ops)).toEqual(["B"]);
   });
@@ -194,12 +187,7 @@ describe("collapseDiffContext", () => {
     const diff = " a\n b\n-c\n+d\n e\n f";
     const result = collapseDiffContext(diff, 0);
     const resultLines = result.split("\n");
-    expect(resultLines).toEqual([
-      "@@ 2 lines omitted @@",
-      "-c",
-      "+d",
-      "@@ 2 lines omitted @@",
-    ]);
+    expect(resultLines).toEqual(["@@ 2 lines omitted @@", "-c", "+d", "@@ 2 lines omitted @@"]);
   });
 
   test("merges overlapping context regions", () => {

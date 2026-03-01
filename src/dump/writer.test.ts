@@ -4,9 +4,7 @@ import { snapshot } from "../vt/__testing.ts";
 import { decodeFrame } from "./frame.ts";
 import { DumpWriter } from "./writer.ts";
 
-async function readRecords(
-  path: string,
-): Promise<{ type: string; timestamp: number }[]> {
+async function readRecords(path: string): Promise<{ type: string; timestamp: number }[]> {
   const buf = new Uint8Array(await Bun.file(path).arrayBuffer());
   const records: { type: string; timestamp: number }[] = [];
   let offset = 0;
@@ -69,11 +67,7 @@ describe("DumpWriter", () => {
 
   test("keyframe inserted after time threshold", async () => {
     const p = tmpFile();
-    const w = new DumpWriter(
-      p,
-      { command: ["test"] },
-      { keyframeIntervalMs: 1000 },
-    );
+    const w = new DumpWriter(p, { command: ["test"] }, { keyframeIntervalMs: 1000 });
 
     const now = Date.now();
     w.write(snapshot(["a"], { timestamp: now }));

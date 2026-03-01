@@ -18,9 +18,7 @@ describe("loadChannels", () => {
   });
 
   test("creates web channel", () => {
-    const entries: ChannelEntry[] = [
-      { type: "web", port: 0, host: "127.0.0.1" },
-    ];
+    const entries: ChannelEntry[] = [{ type: "web", port: 0, host: "127.0.0.1" }];
     const channels = loadChannels(entries, baseConfig);
     expect(channels).toHaveLength(1);
     expect(channels[0]).toBeInstanceOf(WebChannel);
@@ -33,10 +31,7 @@ describe("loadChannels", () => {
   });
 
   test("creates multiple channels", () => {
-    const entries: ChannelEntry[] = [
-      { type: "dump" },
-      { type: "web", port: 0, host: "127.0.0.1" },
-    ];
+    const entries: ChannelEntry[] = [{ type: "dump" }, { type: "web", port: 0, host: "127.0.0.1" }];
     const channels = loadChannels(entries, baseConfig);
     expect(channels).toHaveLength(2);
   });

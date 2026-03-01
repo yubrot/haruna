@@ -6,11 +6,7 @@
  * @module
  */
 
-import {
-  type RichText,
-  richTextToPlainText,
-  type StyledSegment,
-} from "../../vt/snapshot.ts";
+import { type RichText, richTextToPlainText, type StyledSegment } from "../../vt/snapshot.ts";
 
 /** Leaf text element inside a rich_text container. */
 export interface SlackTextElement {
@@ -41,9 +37,7 @@ export interface SlackRichTextPreformatted {
 }
 
 /** Union of sub-containers inside a rich_text block. */
-export type SlackRichTextContainer =
-  | SlackRichTextSection
-  | SlackRichTextPreformatted;
+export type SlackRichTextContainer = SlackRichTextSection | SlackRichTextPreformatted;
 
 /** Slack Block Kit block subset used by this module. */
 export type SlackBlock =
@@ -72,10 +66,7 @@ const RICH_TEXT_CHAR_LIMIT = 3000;
  * @param text - mrkdwn text for the context block
  * @returns New {@link SlackMessage} with the context block added
  */
-export function appendContext(
-  message: SlackMessage,
-  text: string,
-): SlackMessage {
+export function appendContext(message: SlackMessage, text: string): SlackMessage {
   const contextBlock: SlackBlock = {
     type: "context",
     elements: [{ type: "mrkdwn", text }],
@@ -215,15 +206,9 @@ export function formatMessageContent(
   if (style === "block") {
     const elements = richTextToSlackElements(content);
     // rich_text_preformatted only supports SlackTextElement (not emoji)
-    const textElements = elements.filter(
-      (el): el is SlackTextElement => el.type === "text",
-    );
+    const textElements = elements.filter((el): el is SlackTextElement => el.type === "text");
     return {
-      blocks: [
-        richTextBlock([
-          { type: "rich_text_preformatted", elements: textElements },
-        ]),
-      ],
+      blocks: [richTextBlock([{ type: "rich_text_preformatted", elements: textElements }])],
       text: plain,
     };
   }
@@ -255,14 +240,10 @@ export function formatQuestion(event: {
     });
   }
 
-  const bodyElements: SlackRichElement[] = [
-    { type: "text", text: event.question },
-  ];
+  const bodyElements: SlackRichElement[] = [{ type: "text", text: event.question }];
   pushOptionElements(bodyElements, event.options);
 
-  blocks.push(
-    richTextBlock([{ type: "rich_text_section", elements: bodyElements }]),
-  );
+  blocks.push(richTextBlock([{ type: "rich_text_section", elements: bodyElements }]));
 
   return { blocks, text: event.question };
 }
@@ -298,9 +279,7 @@ export function formatPermissionRequired(event: {
   pushOptionElements(bodyElements, event.options);
 
   if (bodyElements.length > 0) {
-    blocks.push(
-      richTextBlock([{ type: "rich_text_section", elements: bodyElements }]),
-    );
+    blocks.push(richTextBlock([{ type: "rich_text_section", elements: bodyElements }]));
   }
 
   return { blocks, text: `Permission required: ${event.command}` };

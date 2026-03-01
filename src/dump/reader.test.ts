@@ -67,9 +67,7 @@ describe("DumpReader", () => {
     const result = [...reader.snapshots()];
     expect(result.length).toBe(3);
     for (let i = 0; i < snapshots.length; i++) {
-      expect((result[i] as SnapshotEntry).snapshot).toEqual(
-        snapshots[i] as Snapshot,
-      );
+      expect((result[i] as SnapshotEntry).snapshot).toEqual(snapshots[i] as Snapshot);
     }
   });
 
@@ -101,12 +99,8 @@ describe("DumpReader", () => {
 
     const result = [...reader.snapshots()];
     expect(result.length).toBe(2);
-    expect((result[0] as SnapshotEntry).snapshot).toEqual(
-      snapshots[0] as Snapshot,
-    );
-    expect((result[1] as SnapshotEntry).snapshot).toEqual(
-      snapshots[1] as Snapshot,
-    );
+    expect((result[0] as SnapshotEntry).snapshot).toEqual(snapshots[0] as Snapshot);
+    expect((result[1] as SnapshotEntry).snapshot).toEqual(snapshots[1] as Snapshot);
   });
 
   test("snapshots(from) starts from the specified timestamp", async () => {
@@ -125,9 +119,7 @@ describe("DumpReader", () => {
     const result = [...reader.snapshots(now + 4000)];
     expect(result.length).toBe(6); // indices 4..9
     for (let i = 0; i < result.length; i++) {
-      expect((result[i] as SnapshotEntry).snapshot).toEqual(
-        snapshots[i + 4] as Snapshot,
-      );
+      expect((result[i] as SnapshotEntry).snapshot).toEqual(snapshots[i + 4] as Snapshot);
     }
   });
 
@@ -145,9 +137,7 @@ describe("DumpReader", () => {
     // from is between first and second — should yield from second
     const result = [...reader.snapshots(now + 500)];
     expect(result.length).toBe(2);
-    expect((result[0] as SnapshotEntry).snapshot).toEqual(
-      snapshots[1] as Snapshot,
-    );
+    expect((result[0] as SnapshotEntry).snapshot).toEqual(snapshots[1] as Snapshot);
   });
 
   // -----------------------------------------------------------------------
@@ -157,9 +147,7 @@ describe("DumpReader", () => {
   test("snapshots() returns null delta for keyframes", async () => {
     const p = tmpFile();
     const now = 1700000000000;
-    await DumpWriter.writeAll(p, { command: ["test"] }, [
-      snapshot(["a"], { timestamp: now }),
-    ]);
+    await DumpWriter.writeAll(p, { command: ["test"] }, [snapshot(["a"], { timestamp: now })]);
     const reader = await DumpReader.open(p);
 
     const result = [...reader.snapshots()];
@@ -269,9 +257,7 @@ describe("DumpReader", () => {
   test("snapshotNearestTo returns null before first timestamp", async () => {
     const p = tmpFile();
     const now = 1700000000000;
-    await DumpWriter.writeAll(p, { command: ["test"] }, [
-      snapshot(["a"], { timestamp: now }),
-    ]);
+    await DumpWriter.writeAll(p, { command: ["test"] }, [snapshot(["a"], { timestamp: now })]);
     const reader = await DumpReader.open(p);
 
     expect(reader.snapshotNearestTo(now - 1)).toBeNull();
@@ -351,9 +337,7 @@ describe("DumpReader", () => {
     const sequential = [...reader.snapshots()];
     expect(sequential.length).toBe(snapshots.length);
     for (let i = 0; i < snapshots.length; i++) {
-      expect((sequential[i] as SnapshotEntry).snapshot).toEqual(
-        snapshots[i] as Snapshot,
-      );
+      expect((sequential[i] as SnapshotEntry).snapshot).toEqual(snapshots[i] as Snapshot);
     }
 
     // Verify random access

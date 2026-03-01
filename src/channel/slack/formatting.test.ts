@@ -19,12 +19,7 @@ describe("richTextToSlackElements", () => {
 
   test("maps bold/italic/strikethrough from StyledSegment", () => {
     const result = richTextToSlackElements([
-      [
-        { t: "bold", b: true },
-        " ",
-        { t: "italic", i: true },
-        { t: "strike", s: true },
-      ],
+      [{ t: "bold", b: true }, " ", { t: "italic", i: true }, { t: "strike", s: true }],
     ]);
     expect(result).toEqual([
       { type: "text", text: "bold", style: { bold: true } },
@@ -35,9 +30,7 @@ describe("richTextToSlackElements", () => {
   });
 
   test("maps combined styles", () => {
-    const result = richTextToSlackElements([
-      [{ t: "combo", b: true, i: true, s: true }],
-    ]);
+    const result = richTextToSlackElements([[{ t: "combo", b: true, i: true, s: true }]]);
     expect(result).toEqual([
       {
         type: "text",
@@ -48,9 +41,7 @@ describe("richTextToSlackElements", () => {
   });
 
   test("ignores unsupported styles (dim, underline, inverse, overline)", () => {
-    const result = richTextToSlackElements([
-      [{ t: "styled", d: true, u: true, v: true, o: true }],
-    ]);
+    const result = richTextToSlackElements([[{ t: "styled", d: true, u: true, v: true, o: true }]]);
     expect(result).toEqual([{ type: "text", text: "styled" }]);
   });
 
@@ -128,9 +119,7 @@ describe("formatMessageContent", () => {
   });
 
   test("preserves rich text segment styles", () => {
-    const result = formatMessageContent("text", [
-      [{ t: "bold", b: true }, " plain"],
-    ]);
+    const result = formatMessageContent("text", [[{ t: "bold", b: true }, " plain"]]);
     expect(result).toMatchObject({
       blocks: [
         {

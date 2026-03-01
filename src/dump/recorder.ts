@@ -70,10 +70,7 @@ export function parseRecordScript(content: string): RecordScript {
  * @returns The number of snapshots recorded
  * @throws When a wait condition times out or another error occurs during recording
  */
-export async function recordDump(
-  script: RecordScript,
-  outputPath: string,
-): Promise<number> {
+export async function recordDump(script: RecordScript, outputPath: string): Promise<number> {
   const vt = new VirtualTerminal({
     cols: script.cols,
     rows: script.rows,
@@ -129,10 +126,7 @@ export async function recordDump(
  * @param vt - The virtual terminal to poll
  * @throws When the timeout is exceeded
  */
-async function wait(
-  condition: WaitCondition,
-  vt: VirtualTerminal,
-): Promise<void> {
+async function wait(condition: WaitCondition, vt: VirtualTerminal): Promise<void> {
   const deadline = Date.now() + condition.timeout;
 
   if ("content" in condition) {
@@ -146,9 +140,7 @@ async function wait(
       }
       await Bun.sleep(condition.poll);
     }
-    throw new Error(
-      `Timed out waiting for content matching /${condition.content}/`,
-    );
+    throw new Error(`Timed out waiting for content matching /${condition.content}/`);
   }
 
   if ("stable" in condition) {
@@ -176,9 +168,7 @@ async function wait(
       if (snapshot.cursor.visible === condition.cursor.visible) return;
       await Bun.sleep(condition.poll);
     }
-    throw new Error(
-      `Timed out waiting for cursor visible=${condition.cursor.visible}`,
-    );
+    throw new Error(`Timed out waiting for cursor visible=${condition.cursor.visible}`);
   }
 
   throw new Error("Unknown wait condition");

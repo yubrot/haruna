@@ -25,9 +25,7 @@ describe("resolveTimestamp", () => {
   });
 
   test("throws on invalid format", () => {
-    expect(() => resolveTimestamp("abc", base)).toThrow(
-      "Invalid timestamp format",
-    );
+    expect(() => resolveTimestamp("abc", base)).toThrow("Invalid timestamp format");
   });
 });
 

@@ -19,15 +19,8 @@ function at(arr: Int32Array, idx: number): number {
  * Check whether diagonal k-1 is behind diagonal k+1 in the Myers frontier.
  * When true, the optimal move is downward (insert); otherwise rightward (delete).
  */
-function shouldMoveDown(
-  arr: Int32Array,
-  offset: number,
-  k: number,
-  d: number,
-): boolean {
-  return (
-    k === -d || (k !== d && at(arr, offset + k - 1) < at(arr, offset + k + 1))
-  );
+function shouldMoveDown(arr: Int32Array, offset: number, k: number, d: number): boolean {
+  return k === -d || (k !== d && at(arr, offset + k - 1) < at(arr, offset + k + 1));
 }
 
 /**
@@ -135,9 +128,7 @@ export function computeEditScript<T>(
     const prevK = down ? k + 1 : k - 1;
 
     // Compute the starting point after the edit move (before diagonal)
-    const startX = down
-      ? at(snap, offset + k + 1)
-      : at(snap, offset + k - 1) + 1;
+    const startX = down ? at(snap, offset + k + 1) : at(snap, offset + k - 1) + 1;
     const startY = startX - k;
 
     // Diagonal keeps: emit in reverse, then reverse the whole array at the end
@@ -203,10 +194,7 @@ export function computeLineDiff(from: string[], to: string[]): string {
  * @param context - Number of context lines to keep around changes. `null` shows all lines.
  * @returns Collapsed diff string
  */
-export function collapseDiffContext(
-  diff: string,
-  context: number | null,
-): string {
+export function collapseDiffContext(diff: string, context: number | null): string {
   if (context === null || diff.length === 0) return diff;
 
   const lines = diff.split("\n");
@@ -225,11 +213,7 @@ export function collapseDiffContext(
   // Mark which lines to keep (changed lines + context around them)
   const keep = new Set<number>();
   for (const idx of changed) {
-    for (
-      let i = Math.max(0, idx - context);
-      i <= Math.min(lines.length - 1, idx + context);
-      i++
-    ) {
+    for (let i = Math.max(0, idx - context); i <= Math.min(lines.length - 1, idx + context); i++) {
       keep.add(i);
     }
   }

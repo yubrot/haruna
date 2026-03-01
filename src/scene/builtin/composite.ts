@@ -8,12 +8,7 @@
  */
 
 import type { Snapshot } from "../../vt/snapshot.ts";
-import type {
-  Scene,
-  SceneContinuation,
-  SceneEvent,
-  SceneInput,
-} from "../interface.ts";
+import type { Scene, SceneContinuation, SceneEvent, SceneInput } from "../interface.ts";
 
 /**
  * A composite scene that delegates to child scenes in priority order.

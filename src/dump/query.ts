@@ -10,11 +10,7 @@ import { CompositeScene } from "../scene/builtin/composite.ts";
 import type { Scene, SceneEvent } from "../scene/interface.ts";
 import { collapseDiffContext, computeLineDiff } from "../util/diff.ts";
 import { resolveTimestamp, type Timestamp } from "../util/time.ts";
-import {
-  type CursorState,
-  type RichText,
-  richTextToPlainText,
-} from "../vt/snapshot.ts";
+import { type CursorState, type RichText, richTextToPlainText } from "../vt/snapshot.ts";
 import { DumpReader, type SnapshotEntry } from "./reader.ts";
 
 /** Unified query parameters for dump inspection. */
@@ -116,12 +112,9 @@ export async function queryDump(query: DumpQuery): Promise<DumpResult> {
 
   // Resolve string timestamps against the dump's start time
   const base = reader.stats.duration?.start ?? 0;
-  const at =
-    query.at !== undefined ? resolveTimestamp(query.at, base) : undefined;
-  const from =
-    query.from !== undefined ? resolveTimestamp(query.from, base) : undefined;
-  const to =
-    query.to !== undefined ? resolveTimestamp(query.to, base) : undefined;
+  const at = query.at !== undefined ? resolveTimestamp(query.at, base) : undefined;
+  const from = query.from !== undefined ? resolveTimestamp(query.from, base) : undefined;
+  const to = query.to !== undefined ? resolveTimestamp(query.to, base) : undefined;
 
   if (query.stats) result.stats = extractStats(reader);
 
@@ -168,8 +161,7 @@ function extractStats(reader: DumpReader): DumpStats {
       ? {
           start: reader.stats.duration.start,
           end: reader.stats.duration.end,
-          seconds:
-            (reader.stats.duration.end - reader.stats.duration.start) / 1000,
+          seconds: (reader.stats.duration.end - reader.stats.duration.start) / 1000,
         }
       : null,
     records: {
@@ -238,12 +230,7 @@ function firstLastDiff(
   if (!firstLines || !lastLines) return [];
   const lastPlain = lastLines.map(richTextToPlainText);
   const entries: DiffEntry[] = [];
-  createDiffEntryPusher(entries, context)(
-    firstLines,
-    lastPlain,
-    firstTs,
-    lastTs,
-  );
+  createDiffEntryPusher(entries, context)(firstLines, lastPlain, firstTs, lastTs);
   return entries;
 }
 
@@ -330,13 +317,9 @@ function collectListAndDiff(
     }
 
     const currentKey = buildDeduplicationKey(delta, sceneState);
-    const isSameGroup =
-      currentKey !== "" && currentKey === prevDeduplicationKey;
+    const isSameGroup = currentKey !== "" && currentKey === prevDeduplicationKey;
 
-    listPush?.(
-      { snapshot, delta, plainLines, matchLines, sceneState, sceneEvents },
-      isSameGroup,
-    );
+    listPush?.({ snapshot, delta, plainLines, matchLines, sceneState, sceneEvents }, isSameGroup);
     diff?.push(plainLines, snapshot.timestamp, isSameGroup);
 
     prevDeduplicationKey = currentKey;
@@ -358,10 +341,7 @@ function createListEntryPusher(
   },
   isSameGroup: boolean,
 ) => void {
-  return (
-    { snapshot, delta, plainLines, matchLines, sceneState, sceneEvents },
-    isSameGroup,
-  ) => {
+  return ({ snapshot, delta, plainLines, matchLines, sceneState, sceneEvents }, isSameGroup) => {
     if (isSameGroup) {
       const last = entries[entries.length - 1] as ListEntry;
       last.endTimestamp = snapshot.timestamp;
@@ -404,10 +384,7 @@ interface DiffCollector {
   complete(): DumpDiff;
 }
 
-function createDiffCollector(
-  level: 0 | 1 | 2,
-  context: number | null,
-): DiffCollector {
+function createDiffCollector(level: 0 | 1 | 2, context: number | null): DiffCollector {
   switch (level) {
     case 0:
       return createFirstLastCollector(context);
@@ -449,9 +426,7 @@ function createFirstLastCollector(context: number | null): DiffCollector {
  * Level 1: emit cross-group diffs at group boundaries and within-group diffs
  * for groups that span multiple snapshots.
  */
-function createSequentialDedupedCollector(
-  context: number | null,
-): DiffCollector {
+function createSequentialDedupedCollector(context: number | null): DiffCollector {
   const entries: DiffEntry[] = [];
   const push = createDiffEntryPusher(entries, context);
   let prevLines: string[] | null = null;
@@ -460,11 +435,7 @@ function createSequentialDedupedCollector(
   let groupStartTimestamp = 0;
 
   function flushWithinGroup(): void {
-    if (
-      groupStartLines !== null &&
-      prevLines !== null &&
-      groupStartTimestamp !== prevTimestamp
-    ) {
+    if (groupStartLines !== null && prevLines !== null && groupStartTimestamp !== prevTimestamp) {
       push(groupStartLines, prevLines, groupStartTimestamp, prevTimestamp);
     }
   }

@@ -18,10 +18,10 @@ import shellScene from "./shell/index.ts";
  * {@link expandBuiltinSceneAliases}, so **cyclic references must be
  * avoided** — they will cause infinite recursion.
  */
-export const builtinSceneRegistry: ReadonlyMap<
+export const builtinSceneRegistry: ReadonlyMap<string, SceneFactory | string[]> = new Map<
   string,
   SceneFactory | string[]
-> = new Map<string, SceneFactory | string[]>([
+>([
   ["shell", shellScene],
   ["builtin", ["shell"]],
 ]);

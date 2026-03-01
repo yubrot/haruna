@@ -4,13 +4,9 @@ import type { Frame, SendSceneInput } from "../interface.ts";
 import { SlackChannel } from "./index.ts";
 
 // Capture the message handler registered via app.message()
-let registeredMessageHandler: (args: {
-  message: Record<string, unknown>;
-}) => Promise<void>;
+let registeredMessageHandler: (args: { message: Record<string, unknown> }) => Promise<void>;
 
-const mockPostMessage = mock(() =>
-  Promise.resolve({ ok: true, ts: "1234567890.123456" }),
-);
+const mockPostMessage = mock(() => Promise.resolve({ ok: true, ts: "1234567890.123456" }));
 const mockUpdate = mock(() => Promise.resolve({ ok: true }));
 const mockDelete = mock(() => Promise.resolve({ ok: true }));
 const mockStart = mock(() => Promise.resolve());
@@ -76,9 +72,7 @@ describe("SlackChannel", () => {
   test("receive posts formatted events to Slack", async () => {
     await channel.start(send);
 
-    channel.receive(
-      frame([{ type: "message_created", style: "text", content: ["hello"] }]),
-    );
+    channel.receive(frame([{ type: "message_created", style: "text", content: ["hello"] }]));
     await channel.stop();
 
     expect(mockPostMessage).toHaveBeenCalledTimes(1);
@@ -93,9 +87,7 @@ describe("SlackChannel", () => {
   test("receive skips events that format to null", async () => {
     await channel.start(send);
 
-    channel.receive(
-      frame([{ type: "input_changed", active: true, text: "hello" }]),
-    );
+    channel.receive(frame([{ type: "input_changed", active: true, text: "hello" }]));
 
     expect(mockPostMessage).not.toHaveBeenCalled();
   });
@@ -103,9 +95,7 @@ describe("SlackChannel", () => {
   test("last_message_updated calls chat.update", async () => {
     await channel.start(send);
 
-    channel.receive(
-      frame([{ type: "message_created", style: "text", content: ["first"] }]),
-    );
+    channel.receive(frame([{ type: "message_created", style: "text", content: ["first"] }]));
     channel.receive(
       frame([
         {
@@ -131,12 +121,8 @@ describe("SlackChannel", () => {
   test("last_message_updated with null content calls chat.delete", async () => {
     await channel.start(send);
 
-    channel.receive(
-      frame([{ type: "message_created", style: "text", content: ["first"] }]),
-    );
-    channel.receive(
-      frame([{ type: "last_message_updated", style: "text", content: null }]),
-    );
+    channel.receive(frame([{ type: "message_created", style: "text", content: ["first"] }]));
+    channel.receive(frame([{ type: "last_message_updated", style: "text", content: null }]));
     await channel.stop();
 
     expect(mockDelete).toHaveBeenCalledTimes(1);
@@ -151,12 +137,8 @@ describe("SlackChannel", () => {
   test("indicator_changed active appends indicator and calls chat.update", async () => {
     await channel.start(send);
 
-    channel.receive(
-      frame([{ type: "message_created", style: "text", content: ["hello"] }]),
-    );
-    channel.receive(
-      frame([{ type: "indicator_changed", active: true, text: "Thinking..." }]),
-    );
+    channel.receive(frame([{ type: "message_created", style: "text", content: ["hello"] }]));
+    channel.receive(frame([{ type: "indicator_changed", active: true, text: "Thinking..." }]));
     await channel.stop();
 
     expect(mockUpdate).toHaveBeenCalledTimes(1);
@@ -176,15 +158,9 @@ describe("SlackChannel", () => {
   test("indicator_changed inactive removes indicator via chat.update", async () => {
     await channel.start(send);
 
-    channel.receive(
-      frame([{ type: "message_created", style: "text", content: ["hello"] }]),
-    );
-    channel.receive(
-      frame([{ type: "indicator_changed", active: true, text: "Thinking..." }]),
-    );
-    channel.receive(
-      frame([{ type: "indicator_changed", active: false, text: "" }]),
-    );
+    channel.receive(frame([{ type: "message_created", style: "text", content: ["hello"] }]));
+    channel.receive(frame([{ type: "indicator_changed", active: true, text: "Thinking..." }]));
+    channel.receive(frame([{ type: "indicator_changed", active: false, text: "" }]));
     await channel.stop();
 
     // The two consecutive updates (activate + deactivate) coalesce into one
@@ -211,17 +187,11 @@ describe("SlackChannel", () => {
     await channel.start(send);
 
     // Set up indicator first via a message + indicator
-    channel.receive(
-      frame([{ type: "message_created", style: "text", content: ["first"] }]),
-    );
-    channel.receive(
-      frame([{ type: "indicator_changed", active: true, text: "Thinking..." }]),
-    );
+    channel.receive(frame([{ type: "message_created", style: "text", content: ["first"] }]));
+    channel.receive(frame([{ type: "indicator_changed", active: true, text: "Thinking..." }]));
 
     // New message should also include indicator
-    channel.receive(
-      frame([{ type: "message_created", style: "text", content: ["second"] }]),
-    );
+    channel.receive(frame([{ type: "message_created", style: "text", content: ["second"] }]));
     await channel.stop();
 
     expect(mockPostMessage).toHaveBeenCalledTimes(2);
@@ -240,16 +210,10 @@ describe("SlackChannel", () => {
   test("message_created strips indicator from previous message before posting", async () => {
     await channel.start(send);
 
-    channel.receive(
-      frame([{ type: "message_created", style: "text", content: ["first"] }]),
-    );
-    channel.receive(
-      frame([{ type: "indicator_changed", active: true, text: "Thinking..." }]),
-    );
+    channel.receive(frame([{ type: "message_created", style: "text", content: ["first"] }]));
+    channel.receive(frame([{ type: "indicator_changed", active: true, text: "Thinking..." }]));
     // Second message should trigger update on the first to remove indicator
-    channel.receive(
-      frame([{ type: "message_created", style: "text", content: ["second"] }]),
-    );
+    channel.receive(frame([{ type: "message_created", style: "text", content: ["second"] }]));
     await channel.stop();
 
     // The indicator activate + strip-indicator updates coalesce into one
@@ -276,9 +240,7 @@ describe("SlackChannel", () => {
   test("indicator_changed without prior message does not call update", async () => {
     await channel.start(send);
 
-    channel.receive(
-      frame([{ type: "indicator_changed", active: true, text: "Thinking..." }]),
-    );
+    channel.receive(frame([{ type: "indicator_changed", active: true, text: "Thinking..." }]));
     await channel.stop();
 
     expect(mockUpdate).not.toHaveBeenCalled();
@@ -407,9 +369,7 @@ describe("SlackChannel", () => {
     });
     await threadChannel.start(send);
 
-    threadChannel.receive(
-      frame([{ type: "message_created", style: "text", content: ["hello"] }]),
-    );
+    threadChannel.receive(frame([{ type: "message_created", style: "text", content: ["hello"] }]));
     await threadChannel.stop();
 
     expect(mockPostMessage).toHaveBeenCalledWith(
@@ -589,9 +549,7 @@ describe("SlackChannel", () => {
   test("question_created resets hasActivePost so indicator update does not target question", async () => {
     await channel.start(send);
 
-    channel.receive(
-      frame([{ type: "message_created", style: "text", content: ["msg"] }]),
-    );
+    channel.receive(frame([{ type: "message_created", style: "text", content: ["msg"] }]));
     channel.receive(
       frame([
         {
@@ -602,9 +560,7 @@ describe("SlackChannel", () => {
       ]),
     );
     // Indicator change should NOT call update (hasActivePost was reset)
-    channel.receive(
-      frame([{ type: "indicator_changed", active: true, text: "Thinking..." }]),
-    );
+    channel.receive(frame([{ type: "indicator_changed", active: true, text: "Thinking..." }]));
     await channel.stop();
 
     expect(mockPostMessage).toHaveBeenCalledTimes(2);
@@ -623,9 +579,7 @@ describe("SlackChannel", () => {
         },
       ]),
     );
-    channel.receive(
-      frame([{ type: "message_created", style: "text", content: ["msg"] }]),
-    );
+    channel.receive(frame([{ type: "message_created", style: "text", content: ["msg"] }]));
     // Orphan question update should NOT call update (hasActiveQuestion was reset)
     channel.receive(
       frame([
@@ -646,12 +600,8 @@ describe("SlackChannel", () => {
   test("question_created strips indicator from previous message", async () => {
     await channel.start(send);
 
-    channel.receive(
-      frame([{ type: "message_created", style: "text", content: ["msg"] }]),
-    );
-    channel.receive(
-      frame([{ type: "indicator_changed", active: true, text: "Thinking..." }]),
-    );
+    channel.receive(frame([{ type: "message_created", style: "text", content: ["msg"] }]));
+    channel.receive(frame([{ type: "indicator_changed", active: true, text: "Thinking..." }]));
     channel.receive(
       frame([
         {
@@ -766,16 +716,10 @@ describe("SlackChannel", () => {
   test("chat.postMessage failure does not break subsequent operations", async () => {
     await channel.start(send);
 
-    mockPostMessage.mockImplementationOnce(() =>
-      Promise.reject(new Error("rate_limited")),
-    );
+    mockPostMessage.mockImplementationOnce(() => Promise.reject(new Error("rate_limited")));
 
-    channel.receive(
-      frame([{ type: "message_created", style: "text", content: ["fail"] }]),
-    );
-    channel.receive(
-      frame([{ type: "message_created", style: "text", content: ["ok"] }]),
-    );
+    channel.receive(frame([{ type: "message_created", style: "text", content: ["fail"] }]));
+    channel.receive(frame([{ type: "message_created", style: "text", content: ["ok"] }]));
     await channel.stop();
 
     // First post fails, second should still be attempted

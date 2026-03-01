@@ -45,10 +45,7 @@ export class Gateway {
     const newState = this.composite?.state ?? null;
 
     if (newState !== prevState) {
-      const idle =
-        newState !== null && newState === this.composite?.idleState
-          ? true
-          : undefined;
+      const idle = newState !== null && newState === this.composite?.idleState ? true : undefined;
       events.push({ type: "scene_state_changed", state: newState, idle });
     }
     this.broadcast(snapshot, events);
@@ -68,9 +65,7 @@ export class Gateway {
 
     // Notify channels if the active scene was cleared
     if (prevState !== null && this.lastSnapshot) {
-      this.broadcast(this.lastSnapshot, [
-        { type: "scene_state_changed", state: null },
-      ]);
+      this.broadcast(this.lastSnapshot, [{ type: "scene_state_changed", state: null }]);
     }
   }
 
@@ -111,9 +106,7 @@ export class Gateway {
       try {
         ch.receive(frame);
       } catch (e) {
-        console.error(
-          `[haruna][${ch.name}] receive failed: ${e instanceof Error ? e.message : e}`,
-        );
+        console.error(`[haruna][${ch.name}] receive failed: ${e instanceof Error ? e.message : e}`);
       }
     }
   }

@@ -94,9 +94,7 @@ steps:
     const entries = [...reader.snapshots()];
     expect(entries.length).toBe(1);
 
-    const text = (entries[0] as SnapshotEntry).snapshot.lines
-      .map(richTextToPlainText)
-      .join("\n");
+    const text = (entries[0] as SnapshotEntry).snapshot.lines.map(richTextToPlainText).join("\n");
     expect(text).toContain("MARKER_LINE");
   });
 
@@ -138,9 +136,7 @@ steps:
     const entries = [...reader.snapshots()];
     expect(entries.length).toBe(1);
 
-    const text = (entries[0] as SnapshotEntry).snapshot.lines
-      .map(richTextToPlainText)
-      .join("\n");
+    const text = (entries[0] as SnapshotEntry).snapshot.lines.map(richTextToPlainText).join("\n");
     expect(text).toContain("got:test-data");
   });
 
@@ -175,8 +171,6 @@ steps:
   - snapshot
 `);
 
-    await expect(recordDump(script, dumpPath)).rejects.toThrow(
-      /Timed out waiting for content/,
-    );
+    await expect(recordDump(script, dumpPath)).rejects.toThrow(/Timed out waiting for content/);
   });
 });

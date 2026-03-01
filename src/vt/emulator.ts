@@ -64,26 +64,20 @@ export class Emulator {
     // Returning false lets xterm.js continue its normal processing.
 
     // CSI ? Pm h — DECSET (DEC private mode set)
-    this.terminal.parser.registerCsiHandler(
-      { prefix: "?", final: "h" },
-      (params) => {
-        for (let i = 0; i < params.length; i++) {
-          if (params[i] === 25) this.cursorVisible = true;
-        }
-        return false;
-      },
-    );
+    this.terminal.parser.registerCsiHandler({ prefix: "?", final: "h" }, (params) => {
+      for (let i = 0; i < params.length; i++) {
+        if (params[i] === 25) this.cursorVisible = true;
+      }
+      return false;
+    });
 
     // CSI ? Pm l — DECRST (DEC private mode reset)
-    this.terminal.parser.registerCsiHandler(
-      { prefix: "?", final: "l" },
-      (params) => {
-        for (let i = 0; i < params.length; i++) {
-          if (params[i] === 25) this.cursorVisible = false;
-        }
-        return false;
-      },
-    );
+    this.terminal.parser.registerCsiHandler({ prefix: "?", final: "l" }, (params) => {
+      for (let i = 0; i < params.length; i++) {
+        if (params[i] === 25) this.cursorVisible = false;
+      }
+      return false;
+    });
   }
 
   /**
@@ -184,12 +178,8 @@ export class Emulator {
       }
     }
 
-    const endIndex = Math.max(
-      this.cursorVisible ? absCursorLine + 1 : 0,
-      lastNonBlank + 1,
-    );
-    const lines =
-      endIndex < allLines.length ? allLines.slice(0, endIndex) : allLines;
+    const endIndex = Math.max(this.cursorVisible ? absCursorLine + 1 : 0, lastNonBlank + 1);
+    const lines = endIndex < allLines.length ? allLines.slice(0, endIndex) : allLines;
 
     // cursor.y is measured from the end of lines (0 = last line).
     // Clamp to 0 when the cursor is invisible and its line was stripped.
@@ -221,10 +211,7 @@ export class Emulator {
    * @param cols - Current terminal width
    * @returns Tuple of [cached scrollback lines, linesOffset]
    */
-  private resolveScrollback(
-    baseY: number,
-    cols: number,
-  ): [RichText[], number | null] {
+  private resolveScrollback(baseY: number, cols: number): [RichText[], number | null] {
     // Recovery from tracking loss (resize or previous marker disposal).
     // Report null for THIS snapshot, reset to 0 for the next one.
     if (this.cumulativeTrimCount === null) {
@@ -254,10 +241,7 @@ export class Emulator {
     const trimCount = originalLine - marker.line;
     if (trimCount > 0) {
       this.cumulativeTrimCount += trimCount;
-      return [
-        cached.slice(trimCount, trimCount + baseY),
-        this.cumulativeTrimCount,
-      ];
+      return [cached.slice(trimCount, trimCount + baseY), this.cumulativeTrimCount];
     }
 
     return [cached.slice(0, baseY), this.cumulativeTrimCount];
@@ -270,11 +254,7 @@ export class Emulator {
    * @param cols - Current terminal width
    * @param baseY - Number of scrollback lines in the buffer
    */
-  private commitScrollback(
-    scrollbackLines: RichText[],
-    cols: number,
-    baseY: number,
-  ): void {
+  private commitScrollback(scrollbackLines: RichText[], cols: number, baseY: number): void {
     this.scrollbackCache = scrollbackLines;
     this.scrollbackCacheCols = cols;
 
@@ -287,8 +267,7 @@ export class Emulator {
     //   offset = (baseY - 1) - (baseY + cursorY) = -1 - cursorY
     const cursorY = this.terminal.buffer.active.cursorY;
     const offset = -1 - cursorY;
-    this.scrollbackCacheMarker =
-      this.terminal.registerMarker(offset) ?? undefined;
+    this.scrollbackCacheMarker = this.terminal.registerMarker(offset) ?? undefined;
   }
 
   /** Release resources held by the underlying terminal. */
@@ -407,11 +386,7 @@ function extractCellAttrs(cell: IBufferCell): CellAttrs {
  * @param cell - Reusable cell object for performance
  * @returns The rich text representation of the line
  */
-function buildRichTextLine(
-  bufferLine: IBufferLine,
-  cols: number,
-  cell: IBufferCell,
-): RichText {
+function buildRichTextLine(bufferLine: IBufferLine, cols: number, cell: IBufferCell): RichText {
   // Single pass: collect runs of characters grouped by identical attributes.
   // Attributes are extracted eagerly so we don't need to re-read the cell.
   const runs: { text: string; attrs: CellAttrs }[] = [];

@@ -77,19 +77,13 @@ describe("pushOp", () => {
     expect(ops).toHaveLength(1);
     expect((ops[0] as { message: { text: string } }).message.text).toBe("v1");
     expect(result).toHaveLength(1);
-    expect((result[0] as { message: { text: string } }).message.text).toBe(
-      "v2",
-    );
+    expect((result[0] as { message: { text: string } }).message.text).toBe("v2");
   });
 });
 
 describe("applySceneEvent", () => {
   test("message_created enqueues a post", () => {
-    const state = applySceneEvent(
-      emptyPostState,
-      messageCreated("hello"),
-      false,
-    );
+    const state = applySceneEvent(emptyPostState, messageCreated("hello"), false);
     expect(state.pendingOps).toHaveLength(1);
     expect(state.pendingOps[0]).toMatchObject({ type: "post" });
     expect(state.lastPost).toMatchObject({ type: "message", indicator: null });
@@ -433,11 +427,7 @@ describe("applySceneEvent", () => {
       { type: "indicator_changed", active: true, text: "Still thinking..." },
       false,
     );
-    state = applySceneEvent(
-      state,
-      { type: "indicator_changed", active: false, text: "" },
-      false,
-    );
+    state = applySceneEvent(state, { type: "indicator_changed", active: false, text: "" }, false);
     // All three consecutive updates should coalesce to one
     expect(state.pendingOps).toHaveLength(1);
     expect(state.pendingOps[0]).toMatchObject({ type: "update" });

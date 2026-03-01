@@ -39,10 +39,7 @@ export interface TraceEntry {
  * @param dumpPath - Path to a `.dump` file recorded by `haruna record`
  * @returns One {@link TraceEntry} per snapshot in the dump
  */
-export async function traceScene(
-  scene: Scene,
-  dumpPath: string,
-): Promise<TraceEntry[]> {
+export async function traceScene(scene: Scene, dumpPath: string): Promise<TraceEntry[]> {
   const reader = await DumpReader.open(dumpPath);
   const composite = new CompositeScene([scene]);
   const result: TraceEntry[] = [];
@@ -56,10 +53,7 @@ export async function traceScene(
 }
 
 /** Event types whose `content` field holds `RichText[]`. */
-const CONTENT_EVENT_TYPES = new Set([
-  "message_created",
-  "last_message_updated",
-]);
+const CONTENT_EVENT_TYPES = new Set(["message_created", "last_message_updated"]);
 
 /**
  * Replace `RichText[]` content with `string[]` in message events.

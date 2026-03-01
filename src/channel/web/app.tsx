@@ -8,13 +8,7 @@
  */
 
 import { type CSSProperties, type RefObject, render } from "preact";
-import {
-  useCallback,
-  useEffect,
-  useReducer,
-  useRef,
-  useState,
-} from "preact/hooks";
+import { useCallback, useEffect, useReducer, useRef, useState } from "preact/hooks";
 import type { JSX } from "preact/jsx-runtime";
 import type { SceneEvent, SceneInput } from "../../scene/interface.ts";
 import {
@@ -80,10 +74,7 @@ function useInteractiveState() {
   return useReducer(reduce, null, init);
 }
 
-function applyEvent(
-  state: InteractiveState,
-  event: SceneEvent,
-): InteractiveState {
+function applyEvent(state: InteractiveState, event: SceneEvent): InteractiveState {
   switch (event.type) {
     case "indicator_changed":
       return { ...state, indicator: event.active ? event.text : "" };
@@ -164,18 +155,12 @@ function applyEvent(
 function updateLast<T extends DisplayItem["type"]>(
   items: DisplayItem[],
   type: T,
-  updater: (
-    item: Extract<DisplayItem, { type: T }>,
-  ) => Extract<DisplayItem, { type: T }> | null,
+  updater: (item: Extract<DisplayItem, { type: T }>) => Extract<DisplayItem, { type: T }> | null,
 ): DisplayItem[] {
   for (let i = items.length - 1; i >= 0; i--) {
     if (items[i]?.type === type) {
       const item = updater(items[i] as Extract<DisplayItem, { type: T }>);
-      return [
-        ...items.slice(0, i),
-        ...(item ? [item] : []),
-        ...items.slice(i + 1),
-      ];
+      return [...items.slice(0, i), ...(item ? [item] : []), ...items.slice(i + 1)];
     }
   }
   return items;
@@ -240,8 +225,7 @@ function useAutoScroll<T extends HTMLElement>(): RefObject<T> {
     if (!el) return;
 
     const onScroll = () => {
-      shouldScroll.current =
-        el.scrollHeight - el.scrollTop - el.clientHeight < 50;
+      shouldScroll.current = el.scrollHeight - el.scrollTop - el.clientHeight < 50;
     };
 
     const observer = new MutationObserver(() => {
@@ -331,11 +315,7 @@ function useChannel(onReceive: (output: Frame) => void): {
  * Computes inline style for windowed mode based on terminal dimensions.
  * Uses ch/lh units to approximate the terminal's cols x rows.
  */
-function windowStyle(
-  windowed: boolean,
-  cols: number,
-  rows: number,
-): CSSProperties | undefined {
+function windowStyle(windowed: boolean, cols: number, rows: number): CSSProperties | undefined {
   if (!windowed) return undefined;
   // ch = width of '0' in monospace, lh = line height
   return {
@@ -365,9 +345,7 @@ function App(): JSX.Element {
     (output: Frame) => {
       setFrames((prev) => {
         const next = [...prev, output];
-        return next.length > MAX_DISPLAY_ITEMS
-          ? next.slice(-MAX_DISPLAY_ITEMS)
-          : next;
+        return next.length > MAX_DISPLAY_ITEMS ? next.slice(-MAX_DISPLAY_ITEMS) : next;
       });
       dispatchEvents(output.events);
       setTermSize({ cols: output.snapshot.cols, rows: output.snapshot.rows });
@@ -399,10 +377,7 @@ function App(): JSX.Element {
 
   return (
     <div class={windowed ? "windowed-backdrop" : ""}>
-      <div
-        class="shell"
-        style={windowStyle(windowed, termSize.cols, termSize.rows)}
-      >
+      <div class="shell" style={windowStyle(windowed, termSize.cols, termSize.rows)}>
         <header>
           <h1>haruna</h1>
           <span class={`status ${connected ? "connected" : "disconnected"}`}>
@@ -425,12 +400,7 @@ function App(): JSX.Element {
                 Raw
               </button>
             </div>
-            <button
-              type="button"
-              class="icon-btn"
-              onClick={toggleTheme}
-              title={`Theme: ${theme}`}
-            >
+            <button type="button" class="icon-btn" onClick={toggleTheme} title={`Theme: ${theme}`}>
               {theme === "dark" ? "☀" : "☾"}
             </button>
             <button
@@ -461,9 +431,7 @@ function App(): JSX.Element {
             rows={1}
             placeholder="Type a message..."
             value={inputText}
-            onInput={(e) =>
-              setInputText((e.target as HTMLTextAreaElement).value)
-            }
+            onInput={(e) => setInputText((e.target as HTMLTextAreaElement).value)}
             onKeyDown={handleKeyDown}
           />
           <button type="button" onClick={sendText}>
@@ -505,10 +473,7 @@ function DisplayItemView({
     return (
       <div class={`message ${item.style}`}>
         {item.content.map((rt, i) => (
-          <div
-            key={i}
-            dangerouslySetInnerHTML={{ __html: richTextToHtml(rt) }}
-          />
+          <div key={i} dangerouslySetInnerHTML={{ __html: richTextToHtml(rt) }} />
         ))}
       </div>
     );
@@ -569,9 +534,7 @@ function OptionsList({
           }}
         >
           <span class="label">{opt.label}</span>
-          {opt.description && (
-            <span class="desc-text"> — {opt.description}</span>
-          )}
+          {opt.description && <span class="desc-text"> — {opt.description}</span>}
         </li>
       ))}
     </ul>
@@ -603,12 +566,9 @@ function RawEntry({
   const [showSnapshot, setShowSnapshot] = useState(false);
 
   const snapshot = output.snapshot;
-  const diff = prevSnapshot
-    ? computeSnapshotDiff(prevSnapshot, snapshot)
-    : null;
+  const diff = prevSnapshot ? computeSnapshotDiff(prevSnapshot, snapshot) : null;
 
-  const changedLines =
-    diff?.lines?.length ?? (prevSnapshot ? null : snapshot.lines.length);
+  const changedLines = diff?.lines?.length ?? (prevSnapshot ? null : snapshot.lines.length);
   const cursorMoved = diff?.cursor != null;
 
   // When exactly one line changed, show it (with cursor highlight if applicable)
@@ -629,15 +589,9 @@ function RawEntry({
   return (
     <div class="raw-entry">
       <div class="raw-header">
-        <span class="timestamp">
-          {new Date(snapshot.timestamp).toISOString()}
-        </span>
-        {changedLines != null && (
-          <span class="raw-tag">Changed lines: {changedLines}</span>
-        )}
-        {prevSnapshot && cursorMoved && (
-          <span class="raw-tag">Cursor moved</span>
-        )}
+        <span class="timestamp">{new Date(snapshot.timestamp).toISOString()}</span>
+        {changedLines != null && <span class="raw-tag">Changed lines: {changedLines}</span>}
+        {prevSnapshot && cursorMoved && <span class="raw-tag">Cursor moved</span>}
         {scrolled && (
           <span class="raw-tag">
             {totalLines} [+{diff.shift}]
@@ -646,10 +600,7 @@ function RawEntry({
       </div>
       {singleChangedLine && (
         <div class="raw-cursor-line">
-          <CursorLine
-            text={singleChangedLine.text}
-            col={singleChangedLine.col}
-          />
+          <CursorLine text={singleChangedLine.text} col={singleChangedLine.col} />
         </div>
       )}
       <div class="raw-toggles">
@@ -688,9 +639,7 @@ function RawEntry({
             </div>
           ),
       )}
-      {showSnapshot && (
-        <div class="raw-detail">{JSON.stringify(snapshot, null, 2)}</div>
-      )}
+      {showSnapshot && <div class="raw-detail">{JSON.stringify(snapshot, null, 2)}</div>}
     </div>
   );
 }

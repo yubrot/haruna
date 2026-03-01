@@ -103,8 +103,7 @@ export class DumpReader {
     this.stats = {
       keyframes,
       deltas,
-      duration:
-        first && last ? { start: first.timestamp, end: last.timestamp } : null,
+      duration: first && last ? { start: first.timestamp, end: last.timestamp } : null,
     };
   }
 

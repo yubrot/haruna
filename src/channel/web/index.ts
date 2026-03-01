@@ -117,16 +117,12 @@ export class WebChannel implements Channel {
         },
         message: (_ws, message) => {
           const input = parseSceneInput(
-            typeof message === "string"
-              ? message
-              : Buffer.from(message).toString("utf-8"),
+            typeof message === "string" ? message : Buffer.from(message).toString("utf-8"),
           );
           if (input) {
             this.send?.(input);
           } else {
-            console.error(
-              `[haruna][${this.name}] invalid input from client, ignoring`,
-            );
+            console.error(`[haruna][${this.name}] invalid input from client, ignoring`);
           }
         },
         close: (ws) => {

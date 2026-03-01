@@ -97,16 +97,9 @@ export interface DecodeResult {
  * @param offset - Byte offset into the buffer
  * @returns The decoded frame and next offset, or `null` if insufficient data or unknown type
  */
-export function decodeFrame(
-  buffer: Uint8Array,
-  offset: number,
-): DecodeResult | null {
+export function decodeFrame(buffer: Uint8Array, offset: number): DecodeResult | null {
   if (offset + FRAME_HEADER_SIZE > buffer.length) return null;
-  const view = new DataView(
-    buffer.buffer,
-    buffer.byteOffset + offset,
-    FRAME_HEADER_SIZE,
-  );
+  const view = new DataView(buffer.buffer, buffer.byteOffset + offset, FRAME_HEADER_SIZE);
   const typeTag = buffer[offset] as number;
   const timestamp = view.getFloat64(1, false);
   const length = view.getUint32(9, false);
@@ -133,9 +126,7 @@ export function decodeFrame(
   let decoded = false;
   const lazyPayload = () => {
     if (!decoded) {
-      cached = unpackr.unpack(
-        buffer.subarray(offset + FRAME_HEADER_SIZE, nextOffset),
-      );
+      cached = unpackr.unpack(buffer.subarray(offset + FRAME_HEADER_SIZE, nextOffset));
       decoded = true;
     }
     return cached;

@@ -127,8 +127,7 @@ function displayDumpResult(result: DumpResult, args: DumpArgs): void {
         const parts = [tsLabel, lineInfo];
         if (args.scene) {
           parts.push(entry.state ?? "(no match)");
-          if (entry.events && entry.events.length > 0)
-            parts.push(`[${entry.events.join(", ")}]`);
+          if (entry.events && entry.events.length > 0) parts.push(`[${entry.events.join(", ")}]`);
         }
         console.log(parts.join("  "));
       }

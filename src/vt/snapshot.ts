@@ -111,10 +111,7 @@ export interface SnapshotDelta {
  * @returns A delta containing only the changed fields, or `null` when the
  *          change cannot be expressed as a delta (keyframe required)
  */
-export function computeSnapshotDiff(
-  prev: Snapshot,
-  curr: Snapshot,
-): SnapshotDelta | null {
+export function computeSnapshotDiff(prev: Snapshot, curr: Snapshot): SnapshotDelta | null {
   // Cannot compute delta when curr has lost offset tracking
   if (curr.linesOffset == null) return null;
 
@@ -136,12 +133,7 @@ export function computeSnapshotDiff(
   // clamp to 0 so the overlap loop is safely skipped.
   const overlapEnd = Math.max(0, Math.min(curr.lines.length, prevAfterShift));
   for (let i = 0; i < overlapEnd; i++) {
-    if (
-      !richTextEqual(
-        prev.lines[shift + i] as RichText,
-        curr.lines[i] as RichText,
-      )
-    ) {
+    if (!richTextEqual(prev.lines[shift + i] as RichText, curr.lines[i] as RichText)) {
       changedLines.push([i, curr.lines[i] as RichText]);
     }
   }
@@ -322,8 +314,7 @@ export function richTextEqual(a: RichText, b: RichText): boolean {
   if (typeof a === "string" || typeof b === "string") return a === b;
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) {
-    if (!richSegmentEqual(a[i] as RichSegment, b[i] as RichSegment))
-      return false;
+    if (!richSegmentEqual(a[i] as RichSegment, b[i] as RichSegment)) return false;
   }
   return true;
 }
@@ -359,9 +350,7 @@ export function richTextLinesEqual(a: RichText[], b: RichText[]): boolean {
  * @returns Absolute line index where the cursor sits
  */
 export function cursorLineIndex(snapshot: Snapshot): number {
-  return (
-    snapshot.lines.length - 1 - snapshot.cursor.y + (snapshot.linesOffset ?? 0)
-  );
+  return snapshot.lines.length - 1 - snapshot.cursor.y + (snapshot.linesOffset ?? 0);
 }
 
 /**
@@ -371,10 +360,7 @@ export function cursorLineIndex(snapshot: Snapshot): number {
  * @param index - Absolute line index
  * @returns The line at the given index, or `undefined` if out of range
  */
-export function getLine(
-  snapshot: Snapshot,
-  index: number,
-): RichText | undefined {
+export function getLine(snapshot: Snapshot, index: number): RichText | undefined {
   const relIndex = index - (snapshot.linesOffset ?? 0);
   if (relIndex < 0 || relIndex >= snapshot.lines.length) return undefined;
   return snapshot.lines[relIndex] as RichText;
@@ -389,27 +375,17 @@ export function getLine(
  * @param to - Absolute end index (exclusive)
  * @returns Trimmed slice of rich-text lines
  */
-export function collectLines(
-  snapshot: Snapshot,
-  from: number,
-  to: number,
-): RichText[] {
+export function collectLines(snapshot: Snapshot, from: number, to: number): RichText[] {
   const offset = snapshot.linesOffset ?? 0;
   const relFrom = Math.max(0, from - offset);
   const relTo = Math.min(snapshot.lines.length, to - offset);
   const { lines } = snapshot;
   let start = relFrom;
-  while (
-    start < relTo &&
-    !richTextToPlainText(lines[start] as RichText).trim()
-  ) {
+  while (start < relTo && !richTextToPlainText(lines[start] as RichText).trim()) {
     start++;
   }
   let end = relTo;
-  while (
-    end > start &&
-    !richTextToPlainText(lines[end - 1] as RichText).trim()
-  ) {
+  while (end > start && !richTextToPlainText(lines[end - 1] as RichText).trim()) {
     end--;
   }
   return lines.slice(start, end) as RichText[];
@@ -427,11 +403,7 @@ export function getPlainLine(snapshot: Snapshot, index: number): string {
 }
 
 /** Collect plain text for each line in an absolute index range. */
-export function collectPlainLines(
-  snapshot: Snapshot,
-  start: number,
-  end: number,
-): string[] {
+export function collectPlainLines(snapshot: Snapshot, start: number, end: number): string[] {
   return collectLines(snapshot, start, end).map(richTextToPlainText);
 }
 

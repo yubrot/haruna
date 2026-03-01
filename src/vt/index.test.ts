@@ -1,10 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { VirtualTerminal } from "./index.ts";
-import {
-  type RichText,
-  richTextToPlainText,
-  type Snapshot,
-} from "./snapshot.ts";
+import { type RichText, richTextToPlainText, type Snapshot } from "./snapshot.ts";
 
 const encoder = new TextEncoder();
 
@@ -29,10 +25,7 @@ function createMonitor(
   changes: { snapshot: Snapshot; previous: Snapshot | undefined }[];
 } {
   const changes: { snapshot: Snapshot; previous: Snapshot | undefined }[] = [];
-  const pending: ((value: {
-    snapshot: Snapshot;
-    previous: Snapshot | undefined;
-  }) => void)[] = [];
+  const pending: ((value: { snapshot: Snapshot; previous: Snapshot | undefined }) => void)[] = [];
 
   const monitor = new VirtualTerminal({
     cols: 80,
@@ -68,9 +61,7 @@ describe("VirtualTerminal", () => {
     monitor.write(encode("hello world"));
     const { snapshot, previous } = await change;
 
-    expect(richTextToPlainText(snapshot.lines[0] as RichText)).toContain(
-      "hello world",
-    );
+    expect(richTextToPlainText(snapshot.lines[0] as RichText)).toContain("hello world");
     expect(previous).toBeUndefined();
 
     monitor.dispose();
@@ -162,9 +153,7 @@ describe("VirtualTerminal", () => {
 
     await monitor.flush();
     expect(changes).toHaveLength(1);
-    expect(
-      richTextToPlainText(changes[0]?.snapshot.lines[0] as RichText),
-    ).toContain("flushed");
+    expect(richTextToPlainText(changes[0]?.snapshot.lines[0] as RichText)).toContain("flushed");
 
     monitor.dispose();
   });
@@ -191,9 +180,7 @@ describe("VirtualTerminal", () => {
     await change;
 
     expect(monitor.lastSnapshot).toBeDefined();
-    expect(
-      richTextToPlainText(monitor.lastSnapshot?.lines[0] as RichText),
-    ).toContain("first");
+    expect(richTextToPlainText(monitor.lastSnapshot?.lines[0] as RichText)).toContain("first");
 
     monitor.dispose();
   });
@@ -212,12 +199,8 @@ describe("VirtualTerminal", () => {
     const { snapshot, previous } = await second;
 
     expect(previous).toBeDefined();
-    expect(richTextToPlainText(previous?.lines[0] as RichText)).toContain(
-      "first",
-    );
-    expect(richTextToPlainText(snapshot.lines[1] as RichText)).toContain(
-      "second",
-    );
+    expect(richTextToPlainText(previous?.lines[0] as RichText)).toContain("first");
+    expect(richTextToPlainText(snapshot.lines[1] as RichText)).toContain("second");
 
     monitor.dispose();
   });

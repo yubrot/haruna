@@ -50,19 +50,13 @@ export class DumpWriter {
    * @param header - Session metadata to write as the first frame
    * @param options - Keyframe insertion policy options
    */
-  constructor(
-    filePath: string,
-    header: HeaderPayload,
-    options?: KeyframePolicy,
-  ) {
+  constructor(filePath: string, header: HeaderPayload, options?: KeyframePolicy) {
     this.intervalMs = options?.keyframeIntervalMs ?? 5000;
     this.sizeRatio = options?.keyframeSizeRatio ?? 2;
 
     mkdirSync(dirname(filePath), { recursive: true });
     this.writer = Bun.file(filePath).writer();
-    this.writer.write(
-      encodeFrame({ type: "header", timestamp: Date.now(), payload: header }),
-    );
+    this.writer.write(encodeFrame({ type: "header", timestamp: Date.now(), payload: header }));
   }
 
   /**

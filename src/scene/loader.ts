@@ -7,12 +7,7 @@
 
 import type { ResolvedSceneEntries } from "../config.ts";
 import { builtinSceneRegistry } from "./builtin/registry.ts";
-import {
-  isScene,
-  type Scene,
-  type SceneConfig,
-  type SceneFactory,
-} from "./interface.ts";
+import { isScene, type Scene, type SceneConfig, type SceneFactory } from "./interface.ts";
 
 /**
  * Load {@link Scene} instances from previously resolved entries.
@@ -57,10 +52,7 @@ export async function loadScenes(
  * @param config - Configuration passed to the scene factory
  * @returns The built scene, or `null` on failure
  */
-export async function loadBuiltinScene(
-  name: string,
-  config: SceneConfig,
-): Promise<Scene | null> {
+export async function loadBuiltinScene(name: string, config: SceneConfig): Promise<Scene | null> {
   const factory = builtinSceneRegistry.get(name);
 
   if (!factory) {
@@ -86,10 +78,7 @@ export async function loadBuiltinScene(
  * @param config - Configuration passed to the scene factory
  * @returns The built scene, or `null` on failure
  */
-export async function loadFileScene(
-  path: string,
-  config: SceneConfig,
-): Promise<Scene | null> {
+export async function loadFileScene(path: string, config: SceneConfig): Promise<Scene | null> {
   try {
     const mod = await import(`${path}?v=${Date.now()}`);
     // `as SceneFactory` is unsound — the module may export anything.
@@ -102,9 +91,7 @@ export async function loadFileScene(
 
     return scene;
   } catch (e) {
-    console.error(
-      `haruna: scene: ${path}: failed to load: ${e instanceof Error ? e.message : e}`,
-    );
+    console.error(`haruna: scene: ${path}: failed to load: ${e instanceof Error ? e.message : e}`);
     return null;
   }
 }

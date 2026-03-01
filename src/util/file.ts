@@ -35,9 +35,7 @@ export async function expandGlobs(
 
   if (!excludes?.length) return matched;
 
-  const excludeGlobs = excludes.map(
-    (pattern) => new Bun.Glob(normalizePath(pattern, cwd)),
-  );
+  const excludeGlobs = excludes.map((pattern) => new Bun.Glob(normalizePath(pattern, cwd)));
   return matched.filter((filePath) => {
     const rel = relative(cwd, filePath);
     return !excludeGlobs.some((glob) => glob.match(rel));

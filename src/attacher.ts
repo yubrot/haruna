@@ -82,9 +82,7 @@ export class Attacher {
     try {
       await this.apply(await this.options.config.reload());
     } catch (e) {
-      console.error(
-        `[haruna] config reload failed: ${e instanceof Error ? e.message : e}`,
-      );
+      console.error(`[haruna] config reload failed: ${e instanceof Error ? e.message : e}`);
     } finally {
       this.reloading = false;
     }
@@ -114,8 +112,7 @@ export class Attacher {
     // Channels
     if (
       this.config === null ||
-      JSON.stringify(newConfig.channels) !==
-        JSON.stringify(this.config.channels)
+      JSON.stringify(newConfig.channels) !== JSON.stringify(this.config.channels)
     ) {
       const newChannels = loadChannels(newConfig.channels, channelConfig);
       await this.gateway.replaceChannels(newChannels);
@@ -134,14 +131,12 @@ export class Attacher {
  * Compute a cache key that covers builtin names, file contents,
  * and per-entry configuration properties.
  */
-async function computeSceneCacheKey(
-  resolved: ResolvedSceneEntries,
-): Promise<string> {
+async function computeSceneCacheKey(resolved: ResolvedSceneEntries): Promise<string> {
   const hasher = new Bun.CryptoHasher("sha256");
 
   // Builtins (names + props)
-  for (const [name, props] of [...resolved.builtins.entries()].sort(
-    ([a], [b]) => a.localeCompare(b),
+  for (const [name, props] of [...resolved.builtins.entries()].sort(([a], [b]) =>
+    a.localeCompare(b),
   )) {
     hasher.update(name);
     if (Object.keys(props).length > 0) hasher.update(JSON.stringify(props));

@@ -17,10 +17,7 @@ import { VirtualTerminal } from "../vt/index.ts";
  * @param config - Resolved configuration
  * @returns The child process exit code
  */
-export async function runExec(
-  command: string[],
-  config: Config,
-): Promise<number> {
+export async function runExec(command: string[], config: Config): Promise<number> {
   let session: PtySession | null = null;
 
   const gateway = new Gateway({

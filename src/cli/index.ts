@@ -129,18 +129,14 @@ program
     ) => {
       // Normalize individual option defaults
       // Commander passes `true` for `--diff` without a value; treat as level 0
-      const diff =
-        opts.diff === undefined ? null : opts.diff === true ? 0 : opts.diff;
+      const diff = opts.diff === undefined ? null : opts.diff === true ? 0 : opts.diff;
       let stats = opts.stats ?? false;
       let list = opts.list ?? false;
 
       // Apply composite default rules
-      const hasActionFlag =
-        stats || list || diff !== null || opts.at !== undefined;
+      const hasActionFlag = stats || list || diff !== null || opts.at !== undefined;
       const hasRangeOrSearch =
-        opts.from !== undefined ||
-        opts.to !== undefined ||
-        opts.search !== undefined;
+        opts.from !== undefined || opts.to !== undefined || opts.search !== undefined;
 
       if (!hasActionFlag) {
         if (hasRangeOrSearch) {
@@ -165,12 +161,7 @@ program
             from: opts.from,
             to: opts.to,
             count: opts.count ?? 100,
-            context:
-              opts.context === undefined
-                ? 3
-                : opts.context === -1
-                  ? null
-                  : opts.context,
+            context: opts.context === undefined ? 3 : opts.context === -1 ? null : opts.context,
             json: opts.json ?? false,
           },
           config,

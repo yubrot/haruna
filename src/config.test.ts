@@ -27,9 +27,9 @@ describe("interpolateEnvVars", () => {
   }
 
   test("expands variable from env", () => {
-    expect(
-      interpolateEnvVars(`token: ${v("MY_TOKEN")}`, { MY_TOKEN: "secret" }),
-    ).toBe("token: secret");
+    expect(interpolateEnvVars(`token: ${v("MY_TOKEN")}`, { MY_TOKEN: "secret" })).toBe(
+      "token: secret",
+    );
   });
 
   test("expands variable with default when env value present", () => {
@@ -41,9 +41,7 @@ describe("interpolateEnvVars", () => {
   });
 
   test("uses default when env var is unset", () => {
-    expect(interpolateEnvVars(`host: ${v("HOST", "localhost")}`, {})).toBe(
-      "host: localhost",
-    );
+    expect(interpolateEnvVars(`host: ${v("HOST", "localhost")}`, {})).toBe("host: localhost");
   });
 
   test("uses empty string when env var is unset and no default", () => {
@@ -51,9 +49,9 @@ describe("interpolateEnvVars", () => {
   });
 
   test("expands multiple placeholders", () => {
-    expect(
-      interpolateEnvVars(`${v("A")}-${v("B")}`, { A: "hello", B: "world" }),
-    ).toBe("hello-world");
+    expect(interpolateEnvVars(`${v("A")}-${v("B")}`, { A: "hello", B: "world" })).toBe(
+      "hello-world",
+    );
   });
 
   test("leaves text without placeholders unchanged", () => {
@@ -140,9 +138,7 @@ describe("Config", () => {
 
     test("throws when file does not exist", async () => {
       const missing = join(dir, "nonexistent.yaml");
-      await expect(Config.loadFromFile(missing)).rejects.toThrow(
-        /Config file not found/,
-      );
+      await expect(Config.loadFromFile(missing)).rejects.toThrow(/Config file not found/);
     });
 
     test("sets baseDir to config file directory", async () => {
@@ -202,9 +198,7 @@ describe("Config", () => {
       const source = parseConfig({
         channels: [{ type: "web", port: 9000, host: "0.0.0.0" }],
       });
-      expect(source.channels).toMatchObject([
-        { type: "web", port: 9000, host: "0.0.0.0" },
-      ]);
+      expect(source.channels).toMatchObject([{ type: "web", port: 9000, host: "0.0.0.0" }]);
     });
   });
 
@@ -246,10 +240,7 @@ describe("Config", () => {
       writeScene(dir, "scene-a.ts", "scene-a");
       writeScene(dir, "scene-a.test.ts", "scene-a-test");
 
-      const result = await configWith([
-        "*.ts",
-        "!*.test.ts",
-      ]).resolveSceneEntries();
+      const result = await configWith(["*.ts", "!*.test.ts"]).resolveSceneEntries();
       expect(result.files.size).toBe(1);
       expect([...result.files.keys()][0]).toEndWith("scene-a.ts");
     });
@@ -267,10 +258,7 @@ describe("Config", () => {
     test("deduplicates files matched by multiple patterns", async () => {
       writeScene(dir, "scene.ts", "scene");
 
-      const result = await configWith([
-        "*.ts",
-        "scene.ts",
-      ]).resolveSceneEntries();
+      const result = await configWith(["*.ts", "scene.ts"]).resolveSceneEntries();
       expect(result.files.size).toBe(1);
     });
 
@@ -300,10 +288,7 @@ describe("Config", () => {
       mkdirSync(scenesDir, { recursive: true });
       writeScene(scenesDir, "proj-scene.ts", "proj-scene");
 
-      const result = await configWith(
-        ["*.ts"],
-        scenesDir,
-      ).resolveSceneEntries();
+      const result = await configWith(["*.ts"], scenesDir).resolveSceneEntries();
       expect(result.files.size).toBe(1);
       expect([...result.files.keys()][0]).toEndWith("proj-scene.ts");
     });

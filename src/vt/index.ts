@@ -42,10 +42,7 @@ export interface VirtualTerminalOptions {
 export class VirtualTerminal {
   private emulator: Emulator;
   private scheduler: Scheduler;
-  private onChange?: (
-    snapshot: Snapshot,
-    previous: Snapshot | undefined,
-  ) => void;
+  private onChange?: (snapshot: Snapshot, previous: Snapshot | undefined) => void;
   private previousSnapshot: Snapshot | undefined;
   private runningCapture: Promise<void> | null = null;
   private captureNeeded = false;

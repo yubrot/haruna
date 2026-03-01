@@ -167,9 +167,7 @@ const DEFAULT_CR_DELAY_MS = 10;
  * @param write - The underlying byte writer
  * @returns A writer with the same signature plus an optional `delay` override
  */
-function crDelayed(
-  write: (bytes: Uint8Array) => void,
-): (data: Uint8Array | string) => void {
+function crDelayed(write: (bytes: Uint8Array) => void): (data: Uint8Array | string) => void {
   let queue: Promise<void> | undefined;
 
   const enqueue = (bytes: Uint8Array, ms = 0): void => {

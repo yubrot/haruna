@@ -23,12 +23,7 @@ function snap(text: string) {
  * (always firm). Set to a narrower prefix to make continuation tentative
  * when the snapshot doesn't start with that prefix.
  */
-function prefixScene(
-  label: string,
-  prefix: string,
-  priority: number,
-  firmPrefix?: string,
-): Scene {
+function prefixScene(label: string, prefix: string, priority: number, firmPrefix?: string): Scene {
   const fp = firmPrefix ?? prefix;
   let active = false;
   return {
@@ -37,15 +32,13 @@ function prefixScene(
       return active ? label : null;
     },
     detect(snapshot) {
-      const firstLine =
-        typeof snapshot.lines[0] === "string" ? snapshot.lines[0] : "";
+      const firstLine = typeof snapshot.lines[0] === "string" ? snapshot.lines[0] : "";
       if (!firstLine.startsWith(prefix)) return null;
       active = true;
       return [];
     },
     continue(snapshot) {
-      const firstLine =
-        typeof snapshot.lines[0] === "string" ? snapshot.lines[0] : "";
+      const firstLine = typeof snapshot.lines[0] === "string" ? snapshot.lines[0] : "";
       if (!firstLine.startsWith(prefix)) {
         active = false;
         return null;
@@ -210,14 +203,11 @@ describe("CompositeScene", () => {
     });
 
     test("preemption does not call detect on the active scene", () => {
-      const shellDetectSpy = mock(
-        (snapshot: { lines: (string | object)[] }) => {
-          const firstLine =
-            typeof snapshot.lines[0] === "string" ? snapshot.lines[0] : "";
-          if (!firstLine.startsWith("any")) return null;
-          return [];
-        },
-      );
+      const shellDetectSpy = mock((snapshot: { lines: (string | object)[] }) => {
+        const firstLine = typeof snapshot.lines[0] === "string" ? snapshot.lines[0] : "";
+        if (!firstLine.startsWith("any")) return null;
+        return [];
+      });
 
       let shellActive = false;
       const shell: Scene = {
@@ -227,8 +217,7 @@ describe("CompositeScene", () => {
         },
         detect: shellDetectSpy,
         continue(snapshot) {
-          const firstLine =
-            typeof snapshot.lines[0] === "string" ? snapshot.lines[0] : "";
+          const firstLine = typeof snapshot.lines[0] === "string" ? snapshot.lines[0] : "";
           if (!firstLine.startsWith("any")) {
             shellActive = false;
             return null;
@@ -410,9 +399,7 @@ describe("CompositeScene", () => {
 
     test("returns null when no active scene", () => {
       const composite = new CompositeScene([]);
-      expect(
-        composite.encodeInput({ type: "text", content: "hello" }),
-      ).toBeNull();
+      expect(composite.encodeInput({ type: "text", content: "hello" })).toBeNull();
     });
 
     test("returns null when active scene has no encodeInput method", () => {
@@ -420,9 +407,7 @@ describe("CompositeScene", () => {
       const composite = new CompositeScene([scene]);
       composite.process(snap("Hello"));
 
-      expect(
-        composite.encodeInput({ type: "text", content: "hello" }),
-      ).toBeNull();
+      expect(composite.encodeInput({ type: "text", content: "hello" })).toBeNull();
     });
   });
 });

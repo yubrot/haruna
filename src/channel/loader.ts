@@ -35,10 +35,7 @@ export interface ChannelConfig {
  * @param config - Shared runtime configuration
  * @returns Instantiated channel objects (not yet started)
  */
-export function loadChannels(
-  entries: ChannelEntry[],
-  config: ChannelConfig,
-): Channel[] {
+export function loadChannels(entries: ChannelEntry[], config: ChannelConfig): Channel[] {
   const channels: Channel[] = [];
   for (const entry of entries) {
     switch (entry.type) {
@@ -55,9 +52,7 @@ export function loadChannels(
       }
       case "dump": {
         if (config._mode === "replay") break;
-        const filePath =
-          entry.path ??
-          resolve(entry.dir ?? ".haruna-dump", `${Date.now()}.dump`);
+        const filePath = entry.path ?? resolve(entry.dir ?? ".haruna-dump", `${Date.now()}.dump`);
         channels.push(new DumpChannel({ filePath, command: config._command }));
         break;
       }

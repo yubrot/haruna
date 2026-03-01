@@ -1,9 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  type RichText,
-  richTextToPlainText,
-  type StyledSegment,
-} from "../vt/snapshot.ts";
+import { type RichText, richTextToPlainText, type StyledSegment } from "../vt/snapshot.ts";
 import { Emulator } from "./emulator.ts";
 
 const encoder = new TextEncoder();
@@ -15,8 +11,7 @@ async function write(vt: Emulator, text: string): Promise<void> {
 
 /** Get a line from snapshot, throwing if out of bounds. */
 function getLine(lines: RichText[], index: number): RichText {
-  if (index < 0 || index >= lines.length)
-    throw new Error(`No line at index ${index}`);
+  if (index < 0 || index >= lines.length) throw new Error(`No line at index ${index}`);
   return lines[index] as RichText;
 }
 
@@ -450,10 +445,7 @@ describe("Emulator", () => {
     const vt = new Emulator({ cols: 80, rows: 2, scrollback: 3 });
     // Write 7 lines into a 2-row viewport with scrollback of 3
     // Lines 1-5 scroll out, but only last 3 are kept in scrollback
-    await write(
-      vt,
-      "line1\r\nline2\r\nline3\r\nline4\r\nline5\r\nline6\r\nline7",
-    );
+    await write(vt, "line1\r\nline2\r\nline3\r\nline4\r\nline5\r\nline6\r\nline7");
     const snap = vt.takeSnapshot();
     // Total: scrollback (at most 3) + viewport (2) = at most 5
     expect(snap.lines.length).toBeLessThanOrEqual(5);
@@ -464,9 +456,7 @@ describe("Emulator", () => {
     // The scrollback portion (most recent scrollback line should be line5)
     const scrollback = snap.lines.slice(0, -snap.rows);
     expect(scrollback.length).toBeLessThanOrEqual(3);
-    expect(
-      richTextToPlainText(scrollback[scrollback.length - 1] as RichText),
-    ).toBe("line5");
+    expect(richTextToPlainText(scrollback[scrollback.length - 1] as RichText)).toBe("line5");
     vt.dispose();
   });
 

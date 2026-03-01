@@ -419,11 +419,7 @@ describe("computeSnapshotDiff", () => {
     const curr = snapshot(["X", "Y", "Z"]);
     const delta = computeSnapshotDiff(prev, curr);
     expect(delta).not.toBeNull();
-    const result = applySnapshotDiff(
-      prev,
-      delta as NonNullable<typeof delta>,
-      curr.timestamp,
-    );
+    const result = applySnapshotDiff(prev, delta as NonNullable<typeof delta>, curr.timestamp);
     expect(result.lines).toEqual(curr.lines);
   });
 
@@ -432,11 +428,7 @@ describe("computeSnapshotDiff", () => {
     const curr = snapshot(["B", "A", "B", "A"]);
     const delta = computeSnapshotDiff(prev, curr);
     expect(delta).not.toBeNull();
-    const result = applySnapshotDiff(
-      prev,
-      delta as NonNullable<typeof delta>,
-      curr.timestamp,
-    );
+    const result = applySnapshotDiff(prev, delta as NonNullable<typeof delta>, curr.timestamp);
     expect(result.lines).toEqual(curr.lines);
   });
 });

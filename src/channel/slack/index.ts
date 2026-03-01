@@ -9,12 +9,7 @@ import { App } from "@slack/bolt";
 import { parseSceneInput } from "../../scene/interface.ts";
 import { Scheduler } from "../../util/scheduler.ts";
 import type { Channel, Frame, SendSceneInput } from "../interface.ts";
-import {
-  applySceneEvent,
-  emptyPostState,
-  type PendingOp,
-  type PostState,
-} from "./state.ts";
+import { applySceneEvent, emptyPostState, type PendingOp, type PostState } from "./state.ts";
 
 /** Options for creating a {@link SlackChannel}. */
 export interface SlackChannelOptions {
@@ -127,8 +122,7 @@ export class SlackChannel implements Channel {
 
       // Thread filter: when thread is set, only accept messages in that thread
       if (targetThread) {
-        const msgThreadTs =
-          "thread_ts" in message ? (message.thread_ts as string) : undefined;
+        const msgThreadTs = "thread_ts" in message ? (message.thread_ts as string) : undefined;
         const msgTs = "ts" in message ? (message.ts as string) : undefined;
         if (msgThreadTs !== targetThread && msgTs !== targetThread) return;
       }
@@ -155,9 +149,7 @@ export class SlackChannel implements Channel {
         return;
       }
 
-      text = text
-        .replace(new RegExp(`<@${this.botUserId}>\\s*`, "g"), "")
-        .trim();
+      text = text.replace(new RegExp(`<@${this.botUserId}>\\s*`, "g"), "").trim();
       if (!text) return;
 
       const input = parseSceneInput({ type: "text", content: text });

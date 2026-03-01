@@ -172,10 +172,7 @@ describe("computeChecksum", () => {
  * @param predicate - Condition to wait for
  * @param timeoutMs - Maximum wait time in milliseconds
  */
-async function waitFor(
-  predicate: () => boolean,
-  timeoutMs = 2000,
-): Promise<void> {
+async function waitFor(predicate: () => boolean, timeoutMs = 2000): Promise<void> {
   const start = Date.now();
   while (!predicate()) {
     if (Date.now() - start > timeoutMs) throw new Error("waitFor timed out");
@@ -189,10 +186,7 @@ async function waitFor(
  * @param predicate - Condition that should remain false
  * @param durationMs - How long to observe
  */
-async function expectNotCalled(
-  predicate: () => boolean,
-  durationMs = 300,
-): Promise<void> {
+async function expectNotCalled(predicate: () => boolean, durationMs = 300): Promise<void> {
   const start = Date.now();
   while (Date.now() - start < durationMs) {
     if (predicate()) throw new Error("predicate became true unexpectedly");

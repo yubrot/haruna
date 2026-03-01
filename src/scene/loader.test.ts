@@ -146,10 +146,7 @@ describe("loadScenes", () => {
       });`,
     );
 
-    const resolved = await configWith(
-      ["factory-scene.ts"],
-      dir,
-    ).resolveSceneEntries();
+    const resolved = await configWith(["factory-scene.ts"], dir).resolveSceneEntries();
     const scenes = await loadScenes(resolved, defaultConfig);
     expect(scenes).toHaveLength(1);
     expect(scenes[0]?.state).toBe("factory");
@@ -159,10 +156,7 @@ describe("loadScenes", () => {
     const path = join(dir, "invalid.ts");
     writeFileSync(path, "export default 42;");
 
-    const resolved = await configWith(
-      ["invalid.ts"],
-      dir,
-    ).resolveSceneEntries();
+    const resolved = await configWith(["invalid.ts"], dir).resolveSceneEntries();
     expect(resolved.files.size).toBe(1);
     const scenes = await loadScenes(resolved, defaultConfig);
     expect(scenes).toHaveLength(0);

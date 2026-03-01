@@ -8,10 +8,7 @@
 import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import * as v from "valibot";
-import {
-  builtinSceneRegistry,
-  expandBuiltinSceneAliases,
-} from "./scene/builtin/registry.ts";
+import { builtinSceneRegistry, expandBuiltinSceneAliases } from "./scene/builtin/registry.ts";
 import { expandGlobs } from "./util/file.ts";
 
 const ConfigSchema = v.object({
@@ -19,37 +16,21 @@ const ConfigSchema = v.object({
     v.object({
       cols: v.optional(v.pipe(v.number(), v.integer(), v.minValue(1)), 80),
       rows: v.optional(v.pipe(v.number(), v.integer(), v.minValue(1)), 24),
-      scrollback: v.optional(
-        v.pipe(v.number(), v.integer(), v.minValue(0)),
-        500,
-      ),
-      debounceMs: v.optional(
-        v.pipe(v.number(), v.integer(), v.minValue(0)),
-        100,
-      ),
-      maxIntervalMs: v.optional(
-        v.pipe(v.number(), v.integer(), v.minValue(0)),
-        300,
-      ),
+      scrollback: v.optional(v.pipe(v.number(), v.integer(), v.minValue(0)), 500),
+      debounceMs: v.optional(v.pipe(v.number(), v.integer(), v.minValue(0)), 100),
+      maxIntervalMs: v.optional(v.pipe(v.number(), v.integer(), v.minValue(0)), 300),
     }),
     {},
   ),
   scenes: v.optional(
-    v.array(
-      v.union([
-        v.string(),
-        v.objectWithRest({ type: v.string() }, v.unknown()),
-      ]),
-    ),
+    v.array(v.union([v.string(), v.objectWithRest({ type: v.string() }, v.unknown())])),
     ["builtin", ".haruna-scene/*.ts"],
   ),
   channels: v.optional(
     v.array(
       v.pipe(
         v.union([v.string(), v.record(v.string(), v.unknown())]),
-        v.transform((input) =>
-          typeof input === "string" ? { type: input } : input,
-        ),
+        v.transform((input) => (typeof input === "string" ? { type: input } : input)),
         v.variant("type", [
           v.object({
             type: v.literal("web"),
@@ -67,30 +48,21 @@ const ConfigSchema = v.object({
             appToken: v.optional(
               v.pipe(
                 v.string(),
-                v.minLength(
-                  1,
-                  "appToken is required (set in config or $SLACK_APP_TOKEN)",
-                ),
+                v.minLength(1, "appToken is required (set in config or $SLACK_APP_TOKEN)"),
               ),
               () => process.env.SLACK_APP_TOKEN ?? "",
             ),
             botToken: v.optional(
               v.pipe(
                 v.string(),
-                v.minLength(
-                  1,
-                  "botToken is required (set in config or $SLACK_BOT_TOKEN)",
-                ),
+                v.minLength(1, "botToken is required (set in config or $SLACK_BOT_TOKEN)"),
               ),
               () => process.env.SLACK_BOT_TOKEN ?? "",
             ),
             channel: v.optional(
               v.pipe(
                 v.string(),
-                v.minLength(
-                  1,
-                  "channel is required (set in config or $SLACK_CHANNEL)",
-                ),
+                v.minLength(1, "channel is required (set in config or $SLACK_CHANNEL)"),
               ),
               () => process.env.SLACK_CHANNEL ?? "",
             ),
@@ -229,8 +201,7 @@ export class Config {
     const excludedFileGlobs: string[] = [];
 
     for (const entry of this.scenes) {
-      const { type, ...props } =
-        typeof entry === "string" ? { type: entry } : entry;
+      const { type, ...props } = typeof entry === "string" ? { type: entry } : entry;
 
       if (type.startsWith("!")) {
         const excluded = type.substring(1);
@@ -248,9 +219,7 @@ export class Config {
       }
     }
 
-    const excludedBuiltins = new Set(
-      expandBuiltinSceneAliases(excludedBuiltinAliases),
-    );
+    const excludedBuiltins = new Set(expandBuiltinSceneAliases(excludedBuiltinAliases));
     const builtins: ResolvedSceneEntries["builtins"] = new Map();
     for (const [builtinAlias, props] of builtinAliases.entries()) {
       for (const name of expandBuiltinSceneAliases([builtinAlias])) {
@@ -262,11 +231,7 @@ export class Config {
 
     const files: ResolvedSceneEntries["files"] = new Map();
     for (const [fileGlob, props] of fileGlobs.entries()) {
-      for (const p of await expandGlobs(
-        [fileGlob],
-        this.baseDir,
-        excludedFileGlobs,
-      )) {
+      for (const p of await expandGlobs([fileGlob], this.baseDir, excludedFileGlobs)) {
         files.set(p, { ...files.get(p), ...props });
       }
     }
@@ -343,7 +308,6 @@ export function interpolateEnvVars(
 ): string {
   return content.replace(
     /\$\{([^}:]+)(?::([^}]*))?\}/g,
-    (_match, name: string, fallback: string | undefined) =>
-      env[name] ?? fallback ?? "",
+    (_match, name: string, fallback: string | undefined) => env[name] ?? fallback ?? "",
   );
 }

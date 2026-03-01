@@ -12,12 +12,7 @@ import {
   richTextToPlainText,
   type Snapshot,
 } from "../../../vt/snapshot.ts";
-import type {
-  Scene,
-  SceneConfig,
-  SceneContinuation,
-  SceneEvent,
-} from "../../interface.ts";
+import type { Scene, SceneConfig, SceneContinuation, SceneEvent } from "../../interface.ts";
 
 /**
  * Internal state of the shell scene.
@@ -99,9 +94,7 @@ class ShellScene implements Scene {
     const snapshotEnd = snapshot.linesOffset + snapshot.lines.length;
     // Minimum snapshotEnd required to keep tracking:
     const requiredEnd =
-      this.shellState.type === "idle"
-        ? this.shellState.promptEnd + 1
-        : this.shellState.emittedUpTo;
+      this.shellState.type === "idle" ? this.shellState.promptEnd + 1 : this.shellState.emittedUpTo;
     if (snapshotEnd < requiredEnd) return this.reDetect(snapshot);
 
     const events: SceneEvent[] = [];
@@ -138,9 +131,7 @@ class ShellScene implements Scene {
       };
     }
 
-    const boundary = prompt
-      ? prompt.promptStart
-      : snapshot.linesOffset + snapshot.lines.length;
+    const boundary = prompt ? prompt.promptStart : snapshot.linesOffset + snapshot.lines.length;
 
     // Content before offset has scrolled out of the snapshot and is
     // no longer accessible; advance past it.
@@ -223,9 +214,7 @@ class PromptMatcher {
   constructor(config: SceneConfig) {
     this.pattern = safeRegExp(config.prompt, /^\$/);
     this.prefixPattern =
-      typeof config.promptPrefix === "string"
-        ? safeRegExp(config.promptPrefix, null)
-        : null;
+      typeof config.promptPrefix === "string" ? safeRegExp(config.promptPrefix, null) : null;
   }
 
   /**
@@ -275,10 +264,7 @@ class PromptMatcher {
  * @param fallback - RegExp to use when `source` is not a string or is invalid
  * @returns Compiled RegExp
  */
-function safeRegExp<T extends RegExp | null>(
-  source: unknown,
-  fallback: T,
-): RegExp | T {
+function safeRegExp<T extends RegExp | null>(source: unknown, fallback: T): RegExp | T {
   if (typeof source !== "string") return fallback;
   try {
     return new RegExp(source);
