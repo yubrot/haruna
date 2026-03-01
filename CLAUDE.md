@@ -29,6 +29,9 @@ Default to using Bun instead of Node.js.
 - JSDoc comments describe the **contract** (WHAT/WHEN), not the implementation (HOW).
 - Implementation details that need documentation belong in inline code comments.
 - Do not re-export. Import directly from the module that defines the symbol.
+- Order code top-down: public types and public API first, then sub-components and internal helpers, then pure utilities at the bottom.
+- Do not use visual separator comments like `//----- ...` or `// ===== ...`. Let the top-down ordering speak for itself.
+- Log messages use `` `[haruna][${name}] message` `` for Scene/Channel code (pluggable modules where the name identifies which scene or channel produced the log), and `` `[haruna] message` `` for haruna core code. Errors from caught exceptions use `e instanceof Error ? e.message : e`.
 
 # Testing
 
