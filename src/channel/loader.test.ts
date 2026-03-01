@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { ChannelEntry } from "../config.ts";
-import { DumpChannel } from "./dump.ts";
+import { DumpChannel } from "./dump/index.ts";
 import { type ChannelConfig, loadChannels } from "./loader.ts";
 import { WebChannel } from "./web/index.ts";
 

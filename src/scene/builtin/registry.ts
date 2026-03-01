@@ -8,7 +8,7 @@
  */
 
 import type { SceneFactory } from "../interface.ts";
-import shellScene from "./shell.ts";
+import shellScene from "./shell/index.ts";
 
 /**
  * All registered built-in scene factories and aliases, keyed by name.

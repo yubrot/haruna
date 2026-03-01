@@ -140,17 +140,8 @@ so secrets never need to appear in the config file:
 
 ### Available `scenes`
 
-#### `shell` Scene
-
-Recognizes interactive shell prompts.
-
-| Property       | Default  | Description                              |
-| -------------- | -------- | ---------------------------------------- |
-| `prompt`       | `"^\\$"` | Regex matching the prompt line           |
-| `promptPrefix` | —        | Regex matching the line above the prompt |
-
-When `promptPrefix` is set, the scene expects a multi-line prompt
-(prefix line + prompt line).
+- [`shell`](src/scene/builtin/shell/README.md) — Recognizes interactive shell prompts
+- TODO: `claude-code`
 
 #### Create a new Scene
 
@@ -165,29 +156,10 @@ the full workflow — from discovery through fixture creation, implementation, t
 
 ### Available `channels`
 
-#### `web` Channel
-
-HTTP server + WebSocket bridge. Serves a browser-based client on `/` and
-upgrades `/ws` to WebSocket. The browser client supports an interactive
-mode (messages, questions, permissions with clickable options) and a raw
-mode (JSON events + snapshot text). Multiple browser tabs can connect
-simultaneously.
-
-| Property        | Default       | Description                           |
-| --------------- | ------------- | ------------------------------------- |
-| `port`          | `0` (random)  | TCP port to listen on                 |
-| `host`          | `"127.0.0.1"` | Bind address                          |
-| `waitForClient` | `false`       | Block startup until a client connects |
-
-#### `dump` Channel
-
-Records binary snapshots to disk. By default creates timestamped files
-under `.haruna-dump/`. Setting `path` writes to a fixed file instead.
-
-| Property | Default          | Description                                    |
-| -------- | ---------------- | ---------------------------------------------- |
-| `dir`    | `".haruna-dump"` | Directory for auto-named dump files            |
-| `path`   | —                | Explicit file path; when set, `dir` is ignored |
+- TODO: `slack`
+- TODO: `discord`
+- [`web`](src/channel/web/README.md) — HTTP server + WebSocket bridge. Serves a browser-based client and streams events via WebSocket
+- [`dump`](src/channel/dump/README.md) — Records binary snapshots to disk for scene development and debugging
 
 #### Create a new Channel
 

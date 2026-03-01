@@ -11,13 +11,13 @@ import {
   getLine,
   richTextToPlainText,
   type Snapshot,
-} from "../../vt/snapshot.ts";
+} from "../../../vt/snapshot.ts";
 import type {
   Scene,
   SceneConfig,
   SceneContinuation,
   SceneEvent,
-} from "../interface.ts";
+} from "../../interface.ts";
 
 /**
  * Internal state of the shell scene.

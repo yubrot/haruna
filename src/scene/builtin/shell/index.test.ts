@@ -8,10 +8,10 @@ import {
   textContaining,
   textMatching,
   traceScene,
-} from "../__testing.ts";
-import shellScene from "./shell.ts";
+} from "../../__testing.ts";
+import shellScene from "./index.ts";
 
-const FIXTURES_DIR = resolve(import.meta.dir, "../../../fixtures/shell");
+const FIXTURES_DIR = resolve(import.meta.dir, "../../../../fixtures/shell");
 
 const inputOff = { type: "input_changed", active: false, text: "" } as const;
 

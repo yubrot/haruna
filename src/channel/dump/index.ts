@@ -4,9 +4,9 @@
  * @module
  */
 
-import type { KeyframePolicy } from "../dump/writer.ts";
-import { DumpWriter } from "../dump/writer.ts";
-import type { Channel, Frame } from "./interface.ts";
+import type { KeyframePolicy } from "../../dump/writer.ts";
+import { DumpWriter } from "../../dump/writer.ts";
+import type { Channel, Frame } from "../interface.ts";
 
 /** Options for creating a DumpChannel. */
 export interface DumpChannelOptions {

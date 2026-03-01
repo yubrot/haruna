@@ -7,7 +7,7 @@
 
 import { resolve } from "node:path";
 import type { ChannelEntry } from "../config.ts";
-import { DumpChannel } from "./dump.ts";
+import { DumpChannel } from "./dump/index.ts";
 import type { Channel } from "./interface.ts";
 
 import { WebChannel } from "./web/index.ts";
