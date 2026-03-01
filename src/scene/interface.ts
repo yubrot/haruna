@@ -28,6 +28,14 @@ export interface Scene {
   readonly state: string | null;
 
   /**
+   * The state string that represents the scene's idle state.
+   *
+   * When defined, the Gateway sets `idle: true` on `scene_state_changed`
+   * events whose `state` matches this value.
+   */
+  readonly idleState?: string;
+
+  /**
    * Pattern check against a snapshot.
    *
    * Called on inactive scenes during clean detection and preemption scans.
@@ -135,6 +143,8 @@ export interface SceneStateChanged {
   type: "scene_state_changed";
   /** Name of the now-active scene, or `null` when no scene is active. */
   state: string | null;
+  /** Set to `true` when the new state is the scene's idle state. */
+  idle?: true;
 }
 
 /** The indicator (spinner) appeared, disappeared, or changed text. */

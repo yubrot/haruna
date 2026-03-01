@@ -315,6 +315,40 @@ describe("CompositeScene", () => {
     });
   });
 
+  describe("idleState", () => {
+    test("delegates to active scene", () => {
+      const scene: Scene = {
+        priority: 0,
+        state: "my-state",
+        idleState: "my-idle",
+        detect() {
+          return [];
+        },
+        continue() {
+          return { events: [], firm: true };
+        },
+      };
+      const composite = new CompositeScene([scene]);
+
+      expect(composite.idleState).toBeUndefined();
+      composite.process(snap("anything"));
+      expect(composite.idleState).toBe("my-idle");
+    });
+
+    test("returns undefined when active scene has no idleState", () => {
+      const scene = prefixScene("s", "Hello", 0);
+      const composite = new CompositeScene([scene]);
+      composite.process(snap("Hello"));
+
+      expect(composite.idleState).toBeUndefined();
+    });
+
+    test("returns undefined when no scene is active", () => {
+      const composite = new CompositeScene([]);
+      expect(composite.idleState).toBeUndefined();
+    });
+  });
+
   describe("Scene interface compliance", () => {
     test("has default priority", () => {
       const composite = new CompositeScene([]);

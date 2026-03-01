@@ -45,7 +45,11 @@ export class Gateway {
     const newState = this.composite?.state ?? null;
 
     if (newState !== prevState) {
-      events.push({ type: "scene_state_changed", state: newState });
+      const idle =
+        newState !== null && newState === this.composite?.idleState
+          ? true
+          : undefined;
+      events.push({ type: "scene_state_changed", state: newState, idle });
     }
     this.broadcast(snapshot, events);
   }

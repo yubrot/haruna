@@ -60,6 +60,10 @@ class ShellScene implements Scene {
     return `shell(${this.shellState.type})`;
   }
 
+  get idleState(): string {
+    return "shell(idle)";
+  }
+
   detect(snapshot: Snapshot): SceneEvent[] | null {
     const prompt = this.promptMatcher.match(snapshot);
     if (!prompt || !prompt.isFirm) return null;
