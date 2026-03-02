@@ -269,7 +269,7 @@ describe("applySceneEvent", () => {
 
   test("indicator_changed after question is ignored", () => {
     const initial: PostState = {
-      lastPost: { type: "question" },
+      lastPost: { type: "question", optionCount: 2 },
       pendingOps: [],
     };
     const state = applySceneEvent(
@@ -292,7 +292,7 @@ describe("applySceneEvent", () => {
     );
     expect(state.pendingOps).toHaveLength(1);
     expect(state.pendingOps[0]).toMatchObject({ type: "post" });
-    expect(state.lastPost).toEqual({ type: "question" });
+    expect(state.lastPost).toEqual({ type: "question", optionCount: 2 });
   });
 
   test("question_created strips indicator from previous message", () => {
@@ -313,12 +313,12 @@ describe("applySceneEvent", () => {
     expect(state.pendingOps).toHaveLength(2);
     expect(state.pendingOps[0]).toMatchObject({ type: "update" });
     expect(state.pendingOps[1]).toMatchObject({ type: "post" });
-    expect(state.lastPost).toEqual({ type: "question" });
+    expect(state.lastPost).toEqual({ type: "question", optionCount: 1 });
   });
 
   test("last_question_updated enqueues an update", () => {
     const initial: PostState = {
-      lastPost: { type: "question" },
+      lastPost: { type: "question", optionCount: 2 },
       pendingOps: [],
     };
     const state = applySceneEvent(
@@ -383,7 +383,7 @@ describe("applySceneEvent", () => {
     );
     expect(state.pendingOps).toHaveLength(1);
     expect(state.pendingOps[0]).toMatchObject({ type: "post" });
-    expect(state.lastPost).toBeNull();
+    expect(state.lastPost).toEqual({ type: "permission", optionCount: 1 });
   });
 
   test("permission_required strips indicator from previous message", () => {
@@ -409,7 +409,7 @@ describe("applySceneEvent", () => {
     expect(state.pendingOps).toHaveLength(2);
     expect(state.pendingOps[0]).toMatchObject({ type: "update" });
     expect(state.pendingOps[1]).toMatchObject({ type: "post" });
-    expect(state.lastPost).toBeNull();
+    expect(state.lastPost).toEqual({ type: "permission", optionCount: 1 });
   });
 
   test("consecutive indicator changes coalesce via pushOp", () => {

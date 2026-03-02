@@ -291,6 +291,98 @@ describe("SlackChannel", () => {
     expect(send).toHaveBeenCalledWith({ type: "text", content: "user input" });
   });
 
+  test("numeric input after question is forwarded as select", async () => {
+    await channel.start(send);
+
+    channel.receive(
+      frame([
+        {
+          type: "question_created",
+          question: "Pick one",
+          options: [{ label: "A" }, { label: "B" }, { label: "C" }],
+        },
+      ]),
+    );
+
+    await registeredMessageHandler({
+      message: { channel: "C_TARGET", text: "2" },
+    });
+
+    expect(send).toHaveBeenCalledWith({ type: "select", index: 1 });
+  });
+
+  test("numeric input after permission is forwarded as select", async () => {
+    await channel.start(send);
+
+    channel.receive(
+      frame([
+        {
+          type: "permission_required",
+          command: "rm -rf /",
+          options: [{ label: "Allow" }, { label: "Deny" }],
+        },
+      ]),
+    );
+
+    await registeredMessageHandler({
+      message: { channel: "C_TARGET", text: "1" },
+    });
+
+    expect(send).toHaveBeenCalledWith({ type: "select", index: 0 });
+  });
+
+  test("out-of-range numeric input after question is forwarded as text", async () => {
+    await channel.start(send);
+
+    channel.receive(
+      frame([
+        {
+          type: "question_created",
+          question: "Pick one",
+          options: [{ label: "A" }, { label: "B" }],
+        },
+      ]),
+    );
+
+    await registeredMessageHandler({
+      message: { channel: "C_TARGET", text: "3" },
+    });
+
+    expect(send).toHaveBeenCalledWith({ type: "text", content: "3" });
+  });
+
+  test("non-numeric input after question is forwarded as text", async () => {
+    await channel.start(send);
+
+    channel.receive(
+      frame([
+        {
+          type: "question_created",
+          question: "Pick one",
+          options: [{ label: "A" }, { label: "B" }],
+        },
+      ]),
+    );
+
+    await registeredMessageHandler({
+      message: { channel: "C_TARGET", text: "hello" },
+    });
+
+    expect(send).toHaveBeenCalledWith({ type: "text", content: "hello" });
+  });
+
+  test("numeric input after message is forwarded as text (not select)", async () => {
+    await channel.start(send);
+
+    channel.receive(frame([{ type: "message_created", style: "text", content: ["hello"] }]));
+
+    await registeredMessageHandler({
+      message: { channel: "C_TARGET", text: "1" },
+    });
+
+    expect(send).toHaveBeenCalledWith({ type: "text", content: "1" });
+  });
+
   test("ignores messages from other channels", async () => {
     await channel.start(send);
 

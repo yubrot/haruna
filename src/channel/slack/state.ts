@@ -26,7 +26,8 @@ export interface PostState {
   /** Logical state of the most recent post (for indicator/update tracking). */
   lastPost:
     | { type: "message"; base: SlackMessage; indicator: string | null }
-    | { type: "question" }
+    | { type: "question"; optionCount: number }
+    | { type: "permission"; optionCount: number }
     | null;
   /** Pending API operations (coalesced on push). */
   pendingOps: PendingOp[];
@@ -196,7 +197,7 @@ function applyQuestionCreated(
   }
 
   ops = pushOp(ops, { type: "post", message });
-  return { lastPost: { type: "question" }, pendingOps: ops };
+  return { lastPost: { type: "question", optionCount: event.options.length }, pendingOps: ops };
 }
 
 function applyLastQuestionUpdated(
@@ -207,7 +208,7 @@ function applyLastQuestionUpdated(
   if (state.lastPost?.type !== "question") return state;
 
   return {
-    lastPost: state.lastPost,
+    lastPost: { type: "question", optionCount: event.options.length },
     pendingOps: pushOp(state.pendingOps, { type: "update", message }),
   };
 }
@@ -225,5 +226,8 @@ function applyPermissionRequired(
   }
 
   ops = pushOp(ops, { type: "post", message });
-  return { lastPost: null, pendingOps: ops };
+  return {
+    lastPost: { type: "permission", optionCount: event.options.length },
+    pendingOps: ops,
+  };
 }

@@ -181,7 +181,7 @@ describe("formatMessageContent", () => {
 });
 
 describe("formatQuestion", () => {
-  test("formats with options", () => {
+  test("formats with numbered options", () => {
     const result = formatQuestion({
       question: "Which color?",
       options: [
@@ -195,13 +195,15 @@ describe("formatQuestion", () => {
           type: "rich_text",
           elements: [
             {
-              type: "rich_text_section",
+              type: "rich_text_preformatted",
               elements: [
                 { type: "text", text: "Which color?" },
                 { type: "text", text: "\n\n" },
+                { type: "text", text: "1. ", style: { bold: true } },
                 { type: "text", text: "Red", style: { bold: true } },
                 { type: "text", text: " — Warm" },
                 { type: "text", text: "\n" },
+                { type: "text", text: "2. ", style: { bold: true } },
                 { type: "text", text: "Blue", style: { bold: true } },
                 { type: "text", text: " — Cool" },
               ],
@@ -224,12 +226,14 @@ describe("formatQuestion", () => {
           type: "rich_text",
           elements: [
             {
-              type: "rich_text_section",
+              type: "rich_text_preformatted",
               elements: [
                 { type: "text", text: "Continue?" },
                 { type: "text", text: "\n\n" },
+                { type: "text", text: "1. ", style: { bold: true } },
                 { type: "text", text: "Yes", style: { bold: true } },
                 { type: "text", text: "\n" },
+                { type: "text", text: "2. ", style: { bold: true } },
                 { type: "text", text: "No", style: { bold: true } },
               ],
             },
@@ -254,7 +258,7 @@ describe("formatQuestion", () => {
 });
 
 describe("formatPermissionRequired", () => {
-  test("formats with warning header and options", () => {
+  test("formats with warning header and numbered options", () => {
     const result = formatPermissionRequired({
       command: "rm -rf /",
       description: "Dangerous operation",
@@ -274,12 +278,14 @@ describe("formatPermissionRequired", () => {
           type: "rich_text",
           elements: [
             {
-              type: "rich_text_section",
+              type: "rich_text_preformatted",
               elements: [
                 { type: "text", text: "Dangerous operation" },
                 { type: "text", text: "\n\n" },
+                { type: "text", text: "1. ", style: { bold: true } },
                 { type: "text", text: "Allow", style: { bold: true } },
                 { type: "text", text: "\n" },
+                { type: "text", text: "2. ", style: { bold: true } },
                 { type: "text", text: "Deny", style: { bold: true } },
               ],
             },

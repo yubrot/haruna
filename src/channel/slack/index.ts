@@ -6,7 +6,7 @@
  */
 
 import { App } from "@slack/bolt";
-import { parseSceneInput } from "../../scene/interface.ts";
+import { parseSceneInput, type SceneInput } from "../../scene/interface.ts";
 import { Scheduler } from "../../util/scheduler.ts";
 import type { Channel, Frame, SendSceneInput } from "../interface.ts";
 import { applySceneEvent, emptyPostState, type PendingOp, type PostState } from "./state.ts";
@@ -152,7 +152,7 @@ export class SlackChannel implements Channel {
       text = text.replace(new RegExp(`<@${this.botUserId}>\\s*`, "g"), "").trim();
       if (!text) return;
 
-      const input = parseSceneInput({ type: "text", content: text });
+      const input = this.resolveInput(text);
       if (input) this.send?.(input);
     });
 
@@ -265,6 +265,31 @@ export class SlackChannel implements Channel {
         break;
       }
     }
+  }
+
+  /**
+   * Convert user text into a {@link SceneInput}.
+   *
+   * When the text is a bare number (1-based) that falls within the option range of
+   * the most recent question or permission prompt, it is converted into a
+   * `select` input. Otherwise it is treated as plain text.
+   *
+   * @param text - Sanitized message text from the user
+   * @returns Parsed SceneInput, or `null` if invalid
+   */
+  private resolveInput(text: string): SceneInput | null {
+    const lastPost = this.state.lastPost;
+    if (
+      (lastPost?.type === "question" || lastPost?.type === "permission") &&
+      lastPost.optionCount > 0 &&
+      /^\d+$/.test(text)
+    ) {
+      const num = Number.parseInt(text, 10);
+      if (num >= 1 && num <= lastPost.optionCount) {
+        return parseSceneInput({ type: "select", index: num - 1 });
+      }
+    }
+    return parseSceneInput({ type: "text", content: text });
   }
 
   /**

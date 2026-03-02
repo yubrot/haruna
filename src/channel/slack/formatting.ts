@@ -232,10 +232,10 @@ export function formatQuestion(event: {
 }): SlackMessage {
   const blocks: SlackBlock[] = [];
 
-  const bodyElements: SlackRichElement[] = [{ type: "text", text: event.question }];
+  const bodyElements: SlackTextElement[] = [{ type: "text", text: event.question }];
   pushOptionElements(bodyElements, event.options);
 
-  blocks.push(richTextBlock([{ type: "rich_text_section", elements: bodyElements }]));
+  blocks.push(richTextBlock([{ type: "rich_text_preformatted", elements: bodyElements }]));
 
   return { blocks, text: event.question };
 }
@@ -262,7 +262,7 @@ export function formatPermissionRequired(event: {
     },
   });
 
-  const bodyElements: SlackRichElement[] = [];
+  const bodyElements: SlackTextElement[] = [];
 
   if (event.description) {
     bodyElements.push({ type: "text", text: event.description });
@@ -271,15 +271,15 @@ export function formatPermissionRequired(event: {
   pushOptionElements(bodyElements, event.options);
 
   if (bodyElements.length > 0) {
-    blocks.push(richTextBlock([{ type: "rich_text_section", elements: bodyElements }]));
+    blocks.push(richTextBlock([{ type: "rich_text_preformatted", elements: bodyElements }]));
   }
 
   return { blocks, text: `Permission required: ${event.command}` };
 }
 
-/** Append labeled options to an element list with leading separator. */
+/** Append numbered options to an element list with leading separator. */
 function pushOptionElements(
-  elements: SlackRichElement[],
+  elements: SlackTextElement[],
   options: { label: string; description?: string }[],
 ): void {
   if (options.length === 0) return;
@@ -290,6 +290,7 @@ function pushOptionElements(
     if (i > 0) elements.push({ type: "text", text: "\n" });
     const opt = options[i];
     if (!opt) continue;
+    elements.push({ type: "text", text: `${i + 1}. `, style: { bold: true } });
     elements.push({ type: "text", text: opt.label, style: { bold: true } });
     if (opt.description) {
       elements.push({ type: "text", text: ` — ${opt.description}` });
