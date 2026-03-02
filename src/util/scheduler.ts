@@ -55,6 +55,13 @@ export class Scheduler {
   }
 
   /**
+   * Whether there is any pending work or not.
+   */
+  get isActive(): boolean {
+    return this.pending;
+  }
+
+  /**
    * Signal that new work is available.
    *
    * Starts or resets the debounce timer and, on the first call in a burst,
@@ -110,9 +117,7 @@ export class Scheduler {
    */
   flush(): void {
     if (this.disposed) return;
-    this.clearAllTimers();
     if (!this.pending) return;
-    this.pending = false;
     this.fire();
   }
 
@@ -141,13 +146,14 @@ export class Scheduler {
       }
     }
 
-    this.pending = false;
-    this.clearAllTimers();
     this.fire();
   }
 
   private fire(): void {
     this.lastCallTime = Date.now();
+    this.pending = false;
+    this.clearAllTimers();
+
     try {
       this.callback();
     } catch {

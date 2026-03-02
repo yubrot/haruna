@@ -11,6 +11,19 @@ import { Scheduler } from "../../util/scheduler.ts";
 import type { Channel, Frame, SendSceneInput } from "../interface.ts";
 import { applySceneEvent, emptyPostState, type PendingOp, type PostState } from "./state.ts";
 
+/** Maps Slack number-word emoji names to their numeric values (1–9). */
+const emojiToNumber: Record<string, number> = {
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+};
+
 /** Options for creating a {@link SlackChannel}. */
 export interface SlackChannelOptions {
   /** Slack app-level token (`xapp-…`) for Socket Mode. */
@@ -113,6 +126,23 @@ export class SlackChannel implements Channel {
     const targetChannel = this.options.channel;
     const targetThread = this.options.thread;
 
+    this.app.event("reaction_added", async ({ event }) => {
+      if (event.item.type !== "message") return;
+      if (event.item.channel !== targetChannel) return;
+      if (event.item.ts !== this.currentTs) return;
+
+      const lastPost = this.state.lastPost;
+      if (lastPost?.type !== "question" && lastPost?.type !== "permission") return;
+
+      const num = emojiToNumber[event.reaction];
+      if (num === undefined || num > lastPost.optionCount) return;
+
+      if (this.botUserId && event.user === this.botUserId) return;
+      if (!this.isUserAllowed(event.user)) return;
+
+      this.send?.({ type: "select", index: num - 1 });
+    });
+
     this.app.message(async ({ message }) => {
       // Skip subtypes (edits, joins, etc.)
       if (message.subtype) return;
@@ -174,6 +204,13 @@ export class SlackChannel implements Channel {
     this.state = emptyPostState;
     this.currentTs = null;
     this.botUserId = null;
+  }
+
+  /**
+   * Whether there are any unsent messages.
+   */
+  get hasPending(): boolean {
+    return this.scheduler.isActive;
   }
 
   /**

@@ -1,10 +1,31 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import type { SceneEvent } from "../../scene/interface.ts";
+import { waitFor } from "../__testing.ts";
 import type { Frame, SendSceneInput } from "../interface.ts";
-import { SlackChannel } from "./index.ts";
+import { SlackChannel, type SlackChannelOptions } from "./index.ts";
 
 // Capture the message handler registered via app.message()
 let registeredMessageHandler: (args: { message: Record<string, unknown> }) => Promise<void>;
+
+/** Invoke the captured `message` handler. */
+async function simulateMessage(message: Record<string, unknown>): Promise<void> {
+  const handler = registeredMessageHandler;
+  if (!handler) throw new Error("message handler not registered");
+  await handler({ message });
+}
+
+// Capture event handlers registered via app.event()
+const registeredEventHandlers: Record<
+  string,
+  (args: { event: Record<string, unknown> }) => Promise<void>
+> = {};
+
+/** Invoke the captured `reaction_added` handler (asserts it exists). */
+async function simulateReaction(event: Record<string, unknown>): Promise<void> {
+  const handler = registeredEventHandlers.reaction_added;
+  if (!handler) throw new Error("reaction_added handler not registered");
+  await handler({ event });
+}
 
 const mockPostMessage = mock(() => Promise.resolve({ ok: true, ts: "1234567890.123456" }));
 const mockUpdate = mock(() => Promise.resolve({ ok: true }));
@@ -25,12 +46,15 @@ mock.module("@slack/bolt", () => ({
     message(handler: typeof registeredMessageHandler) {
       registeredMessageHandler = handler;
     }
+    event(name: string, handler: (typeof registeredEventHandlers)[string]) {
+      registeredEventHandlers[name] = handler;
+    }
     start = mockStart;
     stop = mockStop;
   },
 }));
 
-const OPTIONS: import("./index.ts").SlackChannelOptions = {
+const OPTIONS: SlackChannelOptions = {
   appToken: "xapp-test",
   botToken: "xoxb-test",
   channel: "C_TARGET",
@@ -41,7 +65,7 @@ const OPTIONS: import("./index.ts").SlackChannelOptions = {
 };
 
 function frame(events: SceneEvent[]): Frame {
-  return { snapshot: {} as Frame["snapshot"], events };
+  return { snapshot: {} as Frame["snapshot"] /* unused */, events };
 }
 
 describe("SlackChannel", () => {
@@ -54,6 +78,7 @@ describe("SlackChannel", () => {
     mockDelete.mockClear();
     mockStart.mockClear();
     mockStop.mockClear();
+    for (const key of Object.keys(registeredEventHandlers)) delete registeredEventHandlers[key];
     send = mock(() => {});
     channel = new SlackChannel(OPTIONS);
   });
@@ -284,9 +309,7 @@ describe("SlackChannel", () => {
   test("incoming Slack message is forwarded as text input", async () => {
     await channel.start(send);
 
-    await registeredMessageHandler({
-      message: { channel: "C_TARGET", text: "user input" },
-    });
+    await simulateMessage({ channel: "C_TARGET", text: "user input" });
 
     expect(send).toHaveBeenCalledWith({ type: "text", content: "user input" });
   });
@@ -304,9 +327,7 @@ describe("SlackChannel", () => {
       ]),
     );
 
-    await registeredMessageHandler({
-      message: { channel: "C_TARGET", text: "2" },
-    });
+    await simulateMessage({ channel: "C_TARGET", text: "2" });
 
     expect(send).toHaveBeenCalledWith({ type: "select", index: 1 });
   });
@@ -324,9 +345,7 @@ describe("SlackChannel", () => {
       ]),
     );
 
-    await registeredMessageHandler({
-      message: { channel: "C_TARGET", text: "1" },
-    });
+    await simulateMessage({ channel: "C_TARGET", text: "1" });
 
     expect(send).toHaveBeenCalledWith({ type: "select", index: 0 });
   });
@@ -344,9 +363,7 @@ describe("SlackChannel", () => {
       ]),
     );
 
-    await registeredMessageHandler({
-      message: { channel: "C_TARGET", text: "3" },
-    });
+    await simulateMessage({ channel: "C_TARGET", text: "3" });
 
     expect(send).toHaveBeenCalledWith({ type: "text", content: "3" });
   });
@@ -364,9 +381,7 @@ describe("SlackChannel", () => {
       ]),
     );
 
-    await registeredMessageHandler({
-      message: { channel: "C_TARGET", text: "hello" },
-    });
+    await simulateMessage({ channel: "C_TARGET", text: "hello" });
 
     expect(send).toHaveBeenCalledWith({ type: "text", content: "hello" });
   });
@@ -376,9 +391,7 @@ describe("SlackChannel", () => {
 
     channel.receive(frame([{ type: "message_created", style: "text", content: ["hello"] }]));
 
-    await registeredMessageHandler({
-      message: { channel: "C_TARGET", text: "1" },
-    });
+    await simulateMessage({ channel: "C_TARGET", text: "1" });
 
     expect(send).toHaveBeenCalledWith({ type: "text", content: "1" });
   });
@@ -386,9 +399,7 @@ describe("SlackChannel", () => {
   test("ignores messages from other channels", async () => {
     await channel.start(send);
 
-    await registeredMessageHandler({
-      message: { channel: "C_OTHER", text: "wrong channel" },
-    });
+    await simulateMessage({ channel: "C_OTHER", text: "wrong channel" });
 
     expect(send).not.toHaveBeenCalled();
   });
@@ -396,12 +407,10 @@ describe("SlackChannel", () => {
   test("ignores messages with subtype", async () => {
     await channel.start(send);
 
-    await registeredMessageHandler({
-      message: {
-        channel: "C_TARGET",
-        text: "edited",
-        subtype: "message_changed",
-      },
+    await simulateMessage({
+      channel: "C_TARGET",
+      text: "edited",
+      subtype: "message_changed",
     });
 
     expect(send).not.toHaveBeenCalled();
@@ -410,9 +419,7 @@ describe("SlackChannel", () => {
   test("ignores messages without text", async () => {
     await channel.start(send);
 
-    await registeredMessageHandler({
-      message: { channel: "C_TARGET" },
-    });
+    await simulateMessage({ channel: "C_TARGET" });
 
     expect(send).not.toHaveBeenCalled();
   });
@@ -425,29 +432,23 @@ describe("SlackChannel", () => {
     await threadChannel.start(send);
 
     // Message in the thread — should be forwarded
-    await registeredMessageHandler({
-      message: {
-        channel: "C_TARGET",
-        text: "in thread",
-        thread_ts: "1111111111.111111",
-      },
+    await simulateMessage({
+      channel: "C_TARGET",
+      text: "in thread",
+      thread_ts: "1111111111.111111",
     });
     expect(send).toHaveBeenCalledTimes(1);
 
     // Message outside any thread — should be ignored
     (send as ReturnType<typeof mock>).mockClear();
-    await registeredMessageHandler({
-      message: { channel: "C_TARGET", text: "top-level" },
-    });
+    await simulateMessage({ channel: "C_TARGET", text: "top-level" });
     expect(send).not.toHaveBeenCalled();
 
     // Thread parent message (ts matches thread) — should be forwarded
-    await registeredMessageHandler({
-      message: {
-        channel: "C_TARGET",
-        text: "parent",
-        ts: "1111111111.111111",
-      },
+    await simulateMessage({
+      channel: "C_TARGET",
+      text: "parent",
+      ts: "1111111111.111111",
     });
     expect(send).toHaveBeenCalledTimes(1);
 
@@ -478,14 +479,10 @@ describe("SlackChannel", () => {
     });
     await ch.start(send);
 
-    await registeredMessageHandler({
-      message: { channel: "C_TARGET", text: "denied", user: "U_OTHER" },
-    });
+    await simulateMessage({ channel: "C_TARGET", text: "denied", user: "U_OTHER" });
     expect(send).not.toHaveBeenCalled();
 
-    await registeredMessageHandler({
-      message: { channel: "C_TARGET", text: "allowed", user: "U_ALLOWED" },
-    });
+    await simulateMessage({ channel: "C_TARGET", text: "allowed", user: "U_ALLOWED" });
     expect(send).toHaveBeenCalledTimes(1);
 
     await ch.stop();
@@ -498,14 +495,10 @@ describe("SlackChannel", () => {
     });
     await ch.start(send);
 
-    await registeredMessageHandler({
-      message: { channel: "C_TARGET", text: "blocked", user: "U_BLOCKED" },
-    });
+    await simulateMessage({ channel: "C_TARGET", text: "blocked", user: "U_BLOCKED" });
     expect(send).not.toHaveBeenCalled();
 
-    await registeredMessageHandler({
-      message: { channel: "C_TARGET", text: "ok", user: "U_GOOD" },
-    });
+    await simulateMessage({ channel: "C_TARGET", text: "ok", user: "U_GOOD" });
     expect(send).toHaveBeenCalledTimes(1);
 
     await ch.stop();
@@ -514,13 +507,11 @@ describe("SlackChannel", () => {
   test("allowOtherBots=false skips bot messages", async () => {
     await channel.start(send);
 
-    await registeredMessageHandler({
-      message: {
-        channel: "C_TARGET",
-        text: "from bot",
-        bot_id: "B123",
-        user: "U_BOT",
-      },
+    await simulateMessage({
+      channel: "C_TARGET",
+      text: "from bot",
+      bot_id: "B123",
+      user: "U_BOT",
     });
     expect(send).not.toHaveBeenCalled();
   });
@@ -529,13 +520,11 @@ describe("SlackChannel", () => {
     const ch = new SlackChannel({ ...OPTIONS, allowOtherBots: true });
     await ch.start(send);
 
-    await registeredMessageHandler({
-      message: {
-        channel: "C_TARGET",
-        text: "from bot",
-        bot_id: "B123",
-        user: "U_BOT",
-      },
+    await simulateMessage({
+      channel: "C_TARGET",
+      text: "from bot",
+      bot_id: "B123",
+      user: "U_BOT",
     });
     expect(send).toHaveBeenCalledTimes(1);
 
@@ -546,13 +535,11 @@ describe("SlackChannel", () => {
     const ch = new SlackChannel({ ...OPTIONS, allowOtherBots: true });
     await ch.start(send);
 
-    await registeredMessageHandler({
-      message: {
-        channel: "C_TARGET",
-        text: "from self",
-        bot_id: "B_SELF",
-        user: "U_BOT_SELF",
-      },
+    await simulateMessage({
+      channel: "C_TARGET",
+      text: "from self",
+      bot_id: "B_SELF",
+      user: "U_BOT_SELF",
     });
     expect(send).not.toHaveBeenCalled();
 
@@ -568,24 +555,20 @@ describe("SlackChannel", () => {
     await ch.start(send);
 
     // Self-message using the explicit botUser should be ignored
-    await registeredMessageHandler({
-      message: {
-        channel: "C_TARGET",
-        text: "from self",
-        bot_id: "B_SELF",
-        user: "U_EXPLICIT_BOT",
-      },
+    await simulateMessage({
+      channel: "C_TARGET",
+      text: "from self",
+      bot_id: "B_SELF",
+      user: "U_EXPLICIT_BOT",
     });
     expect(send).not.toHaveBeenCalled();
 
     // Other bot message should be accepted
-    await registeredMessageHandler({
-      message: {
-        channel: "C_TARGET",
-        text: "from other",
-        bot_id: "B_OTHER",
-        user: "U_OTHER",
-      },
+    await simulateMessage({
+      channel: "C_TARGET",
+      text: "from other",
+      bot_id: "B_OTHER",
+      user: "U_OTHER",
     });
     expect(send).toHaveBeenCalledTimes(1);
 
@@ -732,18 +715,11 @@ describe("SlackChannel", () => {
     await ch.start(send);
 
     // Message without mention — should be ignored
-    await registeredMessageHandler({
-      message: { channel: "C_TARGET", text: "no mention" },
-    });
+    await simulateMessage({ channel: "C_TARGET", text: "no mention" });
     expect(send).not.toHaveBeenCalled();
 
     // Message with mention — should be forwarded with mention stripped
-    await registeredMessageHandler({
-      message: {
-        channel: "C_TARGET",
-        text: "<@U_BOT_SELF> do something",
-      },
-    });
+    await simulateMessage({ channel: "C_TARGET", text: "<@U_BOT_SELF> do something" });
     expect(send).toHaveBeenCalledWith({
       type: "text",
       content: "do something",
@@ -759,9 +735,7 @@ describe("SlackChannel", () => {
     });
     await ch.start(send);
 
-    await registeredMessageHandler({
-      message: { channel: "C_TARGET", text: "<@U_BOT_SELF>" },
-    });
+    await simulateMessage({ channel: "C_TARGET", text: "<@U_BOT_SELF>" });
     expect(send).not.toHaveBeenCalled();
 
     await ch.stop();
@@ -770,9 +744,7 @@ describe("SlackChannel", () => {
   test("input with control characters is sanitized", async () => {
     await channel.start(send);
 
-    await registeredMessageHandler({
-      message: { channel: "C_TARGET", text: "hello\x03world\x1bfoo" },
-    });
+    await simulateMessage({ channel: "C_TARGET", text: "hello\x03world\x1bfoo" });
 
     expect(send).toHaveBeenCalledWith({
       type: "text",
@@ -783,9 +755,7 @@ describe("SlackChannel", () => {
   test("send=null does not crash on incoming message", async () => {
     await channel.start(null);
 
-    await registeredMessageHandler({
-      message: { channel: "C_TARGET", text: "hello" },
-    });
+    await simulateMessage({ channel: "C_TARGET", text: "hello" });
 
     // No crash — just silently ignored
   });
@@ -797,12 +767,227 @@ describe("SlackChannel", () => {
     });
     await ch.start(send);
 
-    await registeredMessageHandler({
-      message: { channel: "C_TARGET", text: "hello", user: "U_ANY" },
-    });
+    await simulateMessage({ channel: "C_TARGET", text: "hello", user: "U_ANY" });
     expect(send).not.toHaveBeenCalled();
 
     await ch.stop();
+  });
+
+  test("emoji reaction :one: on question sends select input", async () => {
+    await channel.start(send);
+
+    channel.receive(
+      frame([
+        {
+          type: "question_created",
+          question: "Pick one",
+          options: [{ label: "A" }, { label: "B" }, { label: "C" }],
+        },
+      ]),
+    );
+    await waitFor(() => !channel.hasPending);
+
+    await simulateReaction({
+      reaction: "one",
+      user: "U_HUMAN",
+      item: { type: "message", channel: "C_TARGET", ts: "1234567890.123456" },
+    });
+
+    expect(send).toHaveBeenCalledWith({ type: "select", index: 0 });
+  });
+
+  test("emoji reaction :nine: selects 9th option", async () => {
+    await channel.start(send);
+
+    const options = Array.from({ length: 9 }, (_, i) => ({ label: String(i + 1) }));
+    channel.receive(frame([{ type: "question_created", question: "Pick", options }]));
+    await waitFor(() => !channel.hasPending);
+
+    await simulateReaction({
+      reaction: "nine",
+      user: "U_HUMAN",
+      item: { type: "message", channel: "C_TARGET", ts: "1234567890.123456" },
+    });
+
+    expect(send).toHaveBeenCalledWith({ type: "select", index: 8 });
+  });
+
+  test("emoji reaction on permission sends select input", async () => {
+    await channel.start(send);
+
+    channel.receive(
+      frame([
+        {
+          type: "permission_required",
+          command: "rm -rf /",
+          options: [{ label: "Allow" }, { label: "Deny" }],
+        },
+      ]),
+    );
+    await waitFor(() => !channel.hasPending);
+
+    await simulateReaction({
+      reaction: "two",
+      user: "U_HUMAN",
+      item: { type: "message", channel: "C_TARGET", ts: "1234567890.123456" },
+    });
+
+    expect(send).toHaveBeenCalledWith({ type: "select", index: 1 });
+  });
+
+  test("emoji reaction with out-of-range number is ignored", async () => {
+    await channel.start(send);
+
+    channel.receive(
+      frame([
+        {
+          type: "question_created",
+          question: "Pick",
+          options: [{ label: "A" }, { label: "B" }],
+        },
+      ]),
+    );
+    await waitFor(() => !channel.hasPending);
+
+    await simulateReaction({
+      reaction: "three",
+      user: "U_HUMAN",
+      item: { type: "message", channel: "C_TARGET", ts: "1234567890.123456" },
+    });
+
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  test("unrelated emoji reaction is ignored", async () => {
+    await channel.start(send);
+
+    channel.receive(
+      frame([
+        {
+          type: "question_created",
+          question: "Pick",
+          options: [{ label: "A" }, { label: "B" }],
+        },
+      ]),
+    );
+    await waitFor(() => !channel.hasPending);
+
+    await simulateReaction({
+      reaction: "thumbsup",
+      user: "U_HUMAN",
+      item: { type: "message", channel: "C_TARGET", ts: "1234567890.123456" },
+    });
+
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  test("emoji reaction on different channel is ignored", async () => {
+    await channel.start(send);
+
+    channel.receive(
+      frame([
+        {
+          type: "question_created",
+          question: "Pick",
+          options: [{ label: "A" }, { label: "B" }],
+        },
+      ]),
+    );
+    await waitFor(() => !channel.hasPending);
+
+    await simulateReaction({
+      reaction: "one",
+      user: "U_HUMAN",
+      item: { type: "message", channel: "C_OTHER", ts: "1234567890.123456" },
+    });
+
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  test("emoji reaction on non-current message is ignored", async () => {
+    await channel.start(send);
+
+    channel.receive(
+      frame([
+        {
+          type: "question_created",
+          question: "Pick",
+          options: [{ label: "A" }, { label: "B" }],
+        },
+      ]),
+    );
+    await waitFor(() => !channel.hasPending);
+
+    await simulateReaction({
+      reaction: "one",
+      user: "U_HUMAN",
+      item: { type: "message", channel: "C_TARGET", ts: "9999999999.999999" },
+    });
+
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  test("emoji reaction when lastPost is message (not question/permission) is ignored", async () => {
+    await channel.start(send);
+
+    channel.receive(frame([{ type: "message_created", style: "text", content: ["hello"] }]));
+    await waitFor(() => !channel.hasPending);
+
+    await simulateReaction({
+      reaction: "one",
+      user: "U_HUMAN",
+      item: { type: "message", channel: "C_TARGET", ts: "1234567890.123456" },
+    });
+
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  test("emoji reaction from disallowed user is ignored", async () => {
+    const ch = new SlackChannel({ ...OPTIONS, allowUsers: ["U_ALLOWED"] });
+    await ch.start(send);
+
+    ch.receive(
+      frame([
+        {
+          type: "question_created",
+          question: "Pick",
+          options: [{ label: "A" }, { label: "B" }],
+        },
+      ]),
+    );
+    await waitFor(() => !channel.hasPending);
+
+    await simulateReaction({
+      reaction: "one",
+      user: "U_DENIED",
+      item: { type: "message", channel: "C_TARGET", ts: "1234567890.123456" },
+    });
+
+    expect(send).not.toHaveBeenCalled();
+    await ch.stop();
+  });
+
+  test("emoji reaction from bot itself is ignored", async () => {
+    await channel.start(send);
+
+    channel.receive(
+      frame([
+        {
+          type: "question_created",
+          question: "Pick",
+          options: [{ label: "A" }, { label: "B" }],
+        },
+      ]),
+    );
+    await waitFor(() => !channel.hasPending);
+
+    await simulateReaction({
+      reaction: "one",
+      user: "U_BOT_SELF",
+      item: { type: "message", channel: "C_TARGET", ts: "1234567890.123456" },
+    });
+
+    expect(send).not.toHaveBeenCalled();
   });
 
   test("chat.postMessage failure does not break subsequent operations", async () => {
