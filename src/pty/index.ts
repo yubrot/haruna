@@ -8,8 +8,6 @@
  * @module
  */
 
-const textEncoder = new TextEncoder();
-
 /** Options for creating a PTY session. */
 export interface PtyOptions {
   /** The command and arguments to execute in the PTY. */
@@ -132,14 +130,10 @@ export function runPty(options: PtyOptions): PtySession {
     for (const c of disposeCallbacks) c();
   };
 
-  const write = crDelayed((bytes) => {
-    if (!disposed) terminal.write(bytes);
-  });
-
   return {
     write(data: Uint8Array | string) {
       if (disposed) return;
-      write(data);
+      terminal.write(typeof data === "string" ? new TextEncoder().encode(data) : data);
     },
 
     kill(signal: NodeJS.Signals = "SIGTERM") {
@@ -147,50 +141,6 @@ export function runPty(options: PtyOptions): PtySession {
     },
 
     exited: proc.exited.finally(cleanup),
-  };
-}
-
-const CR_BYTES = new Uint8Array([0x0d]);
-const DEFAULT_CR_DELAY_MS = 10;
-
-/**
- * Wrap a raw byte writer so that CR (`\r`) in string data is delivered as a
- * separate write after a short delay. TUI frameworks (e.g. Ink) may treat
- * text + CR arriving in a single chunk as pasted text, turning CR into a
- * literal newline instead of a submit action.
- *
- * - `Uint8Array` and strings without CR are forwarded immediately.
- * - Strings containing CR are split on CR boundaries; each CR is written
- *   after a delay to give the TUI time to process preceding text.
- * - All writes are sequenced through an internal queue to preserve order.
- *
- * @param write - The underlying byte writer
- * @returns A writer with the same signature plus an optional `delay` override
- */
-function crDelayed(write: (bytes: Uint8Array) => void): (data: Uint8Array | string) => void {
-  let queue: Promise<void> | undefined;
-
-  const enqueue = (bytes: Uint8Array, ms = 0): void => {
-    let prev = queue;
-    queue = (async () => {
-      await prev;
-      prev = undefined;
-      if (ms !== 0) await Bun.sleep(ms);
-      write(bytes);
-    })();
-  };
-
-  return (data: Uint8Array | string) => {
-    const delay = DEFAULT_CR_DELAY_MS;
-    if (typeof data === "string" && data.includes("\r")) {
-      const parts = data.split("\r");
-      for (let i = 0; i < parts.length; i++) {
-        if (i > 0) enqueue(CR_BYTES, delay);
-        if (parts[i]) enqueue(textEncoder.encode(parts[i]));
-      }
-    } else {
-      enqueue(typeof data === "string" ? textEncoder.encode(data) : data);
-    }
   };
 }
 

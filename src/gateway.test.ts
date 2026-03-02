@@ -1,0 +1,161 @@
+import { describe, expect, test } from "bun:test";
+import type { Channel } from "./channel/interface.ts";
+import { Gateway } from "./gateway.ts";
+import type { InputAction, Scene, SceneContinuation, SceneInput } from "./scene/interface.ts";
+import type { Snapshot } from "./vt/snapshot.ts";
+
+/** Minimal no-op snapshot for testing. */
+const dummySnapshot = {} as Snapshot;
+
+/** Create a minimal stub channel that captures the `send` callback. */
+function stubChannel(name = "test"): Channel & { sendInput(input: SceneInput): void } {
+  let sendFn: ((input: SceneInput) => void) | null = null;
+  return {
+    name,
+    sendInput(input: SceneInput) {
+      if (sendFn) sendFn(input);
+    },
+    async start(send) {
+      sendFn = send;
+    },
+    async stop() {},
+    receive() {},
+  };
+}
+
+/** Create a minimal scene that returns `actions` from `encodeInput`. */
+function stubScene(actions: InputAction[] | InputAction | null): Scene {
+  return {
+    priority: 0,
+    get state() {
+      return "stub";
+    },
+    detect() {
+      return [];
+    },
+    continue(): SceneContinuation {
+      return { events: [], firm: true };
+    },
+    encodeInput() {
+      return actions;
+    },
+  };
+}
+
+describe("Gateway.send", () => {
+  test("writes scene-encoded string action to PTY", async () => {
+    const written: string[] = [];
+    const gw = new Gateway({ write: (b) => written.push(b) });
+    gw.replaceScenes([stubScene("hello\r")]);
+    gw.update(dummySnapshot);
+
+    const ch = stubChannel();
+    await gw.replaceChannels([ch]);
+    ch.sendInput({ type: "text", content: "ignored" });
+
+    await gw.flush();
+    expect(written).toEqual(["hello\r"]);
+  });
+
+  test("executes InputAction array with sleep between writes", async () => {
+    const written: string[] = [];
+    const timestamps: number[] = [];
+    const gw = new Gateway({
+      write: (b) => {
+        written.push(b);
+        timestamps.push(Date.now());
+      },
+    });
+    gw.replaceScenes([stubScene(["abc", { sleep: 20 }, "\r"])]);
+    gw.update(dummySnapshot);
+
+    const ch = stubChannel();
+    await gw.replaceChannels([ch]);
+    ch.sendInput({ type: "text", content: "x" });
+
+    await gw.flush();
+    expect(written).toEqual(["abc", "\r"]);
+    expect(timestamps).toHaveLength(2);
+    // The delay between writes should be at least ~20ms
+    expect((timestamps[1] ?? 0) - (timestamps[0] ?? 0)).toBeGreaterThanOrEqual(15);
+  });
+
+  test("falls back to content + CR for text input", async () => {
+    const written: string[] = [];
+    const gw = new Gateway({ write: (b) => written.push(b) });
+    // No scenes — triggers default fallback
+    gw.update(dummySnapshot);
+
+    const ch = stubChannel();
+    await gw.replaceChannels([ch]);
+    ch.sendInput({ type: "text", content: "hello" });
+
+    await gw.flush();
+    expect(written).toEqual(["hello\r"]);
+  });
+
+  test("falls back to bare CR for empty text input", async () => {
+    const written: string[] = [];
+    const gw = new Gateway({ write: (b) => written.push(b) });
+    gw.update(dummySnapshot);
+
+    const ch = stubChannel();
+    await gw.replaceChannels([ch]);
+    ch.sendInput({ type: "text", content: "" });
+
+    await gw.flush();
+    expect(written).toEqual(["\r"]);
+  });
+
+  test("ignores select input when no scene handles it", async () => {
+    const written: string[] = [];
+    const gw = new Gateway({ write: (b) => written.push(b) });
+    gw.update(dummySnapshot);
+
+    const ch = stubChannel();
+    await gw.replaceChannels([ch]);
+    ch.sendInput({ type: "select", index: 0 });
+
+    await gw.flush();
+    expect(written).toEqual([]);
+  });
+
+  test("does nothing when write is not provided", async () => {
+    const gw = new Gateway();
+    gw.update(dummySnapshot);
+
+    const ch = stubChannel();
+    await gw.replaceChannels([ch]);
+    // Should not throw
+    ch.sendInput({ type: "text", content: "hello" });
+    await gw.flush();
+  });
+
+  test("handles single sleep action from scene", async () => {
+    const written: string[] = [];
+    const gw = new Gateway({ write: (b) => written.push(b) });
+    gw.replaceScenes([stubScene({ sleep: 5 })]);
+    gw.update(dummySnapshot);
+
+    const ch = stubChannel();
+    await gw.replaceChannels([ch]);
+    ch.sendInput({ type: "text", content: "x" });
+
+    await gw.flush();
+    expect(written).toEqual([]);
+  });
+
+  test("handles null from scene encodeInput (falls back to default)", async () => {
+    const written: string[] = [];
+    const gw = new Gateway({ write: (b) => written.push(b) });
+    gw.replaceScenes([stubScene(null)]);
+    gw.update(dummySnapshot);
+
+    const ch = stubChannel();
+    await gw.replaceChannels([ch]);
+    ch.sendInput({ type: "text", content: "hi" });
+
+    await gw.flush();
+    expect(written).toEqual(["hi\r"]);
+  });
+});

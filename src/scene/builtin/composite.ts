@@ -8,7 +8,13 @@
  */
 
 import type { Snapshot } from "../../vt/snapshot.ts";
-import type { Scene, SceneContinuation, SceneEvent, SceneInput } from "../interface.ts";
+import type {
+  InputAction,
+  Scene,
+  SceneContinuation,
+  SceneEvent,
+  SceneInput,
+} from "../interface.ts";
 
 /**
  * A composite scene that delegates to child scenes in priority order.
@@ -110,9 +116,9 @@ export class CompositeScene implements Scene {
    * Delegate input to the active child scene.
    *
    * @param input - The structured input from a channel
-   * @returns Raw bytes to write to the PTY, or `null` if no active scene handles it
+   * @returns Action(s) to execute, or `null` if no active scene handles it
    */
-  encodeInput(input: SceneInput): string | null {
+  encodeInput(input: SceneInput): InputAction[] | InputAction | null {
     return this.activeScene?.encodeInput?.(input) ?? null;
   }
 }

@@ -7,7 +7,8 @@
 
 import type { Channel } from "./channel/interface.ts";
 import { CompositeScene } from "./scene/builtin/composite.ts";
-import type { Scene, SceneEvent, SceneInput } from "./scene/interface.ts";
+import type { InputAction, Scene, SceneEvent, SceneInput } from "./scene/interface.ts";
+import { SequentialQueue } from "./util/async.ts";
 import type { Snapshot } from "./vt/snapshot.ts";
 
 /**
@@ -23,6 +24,7 @@ export class Gateway {
   private lastSnapshot: Snapshot | null = null;
   private prevIdle = false;
   private readonly write: ((bytes: string) => void) | null;
+  private readonly sendQueue: SequentialQueue;
 
   /**
    * Create a new Gateway.
@@ -31,6 +33,9 @@ export class Gateway {
    */
   constructor(options?: { write?: (bytes: string) => void }) {
     this.write = options?.write ?? null;
+    this.sendQueue = new SequentialQueue({
+      onError: (e) => console.error(`[haruna] send failed: ${e instanceof Error ? e.message : e}`),
+    });
   }
 
   /**
@@ -103,6 +108,15 @@ export class Gateway {
     this.channels = started;
   }
 
+  /**
+   * Wait for all pending input writes to complete.
+   *
+   * Exposed for testing; production code does not need to call this.
+   */
+  flush(): Promise<void> {
+    return this.sendQueue.drain();
+  }
+
   /** Deliver a frame to all channels, isolating per-channel failures. */
   private broadcast(snapshot: Snapshot, events: SceneEvent[]): void {
     const frame = { snapshot, events };
@@ -118,17 +132,35 @@ export class Gateway {
   /**
    * Translate structured input through the active scene and write to the PTY.
    *
-   * The active scene's `send` method is tried first. If it returns a string,
-   * that value is written verbatim. Otherwise, `TextSceneInput` falls back to
-   * `content + "\n"`. `SelectSceneInput` with no scene handler is silently ignored.
+   * The active scene's `encodeInput` is tried first. If it returns action(s),
+   * they are executed in order (strings are written, `{ sleep }` values are
+   * awaited). Otherwise, `TextSceneInput` falls back to writing `content + CR`.
+   * `SelectSceneInput` with no scene handler is silently ignored.
+   *
+   * Calls are serialized through a {@link SequentialQueue} so that concurrent
+   * inputs do not interleave PTY writes.
    */
   private send(input: SceneInput): void {
     if (!this.write) return;
-    const mapped = this.composite?.encodeInput(input) ?? null;
-    if (mapped !== null) {
-      this.write(mapped);
-    } else if (input.type === "text") {
-      this.write(`${input.content}\r`);
+    this.sendQueue.enqueue(async () => {
+      const mapped = this.composite?.encodeInput(input) ?? null;
+      if (mapped !== null) {
+        await this.executeActions(mapped);
+      } else if (input.type === "text") {
+        await this.executeActions(`${input.content}\r`);
+      }
+    });
+  }
+
+  /** Execute one or more {@link InputAction}s sequentially. */
+  private async executeActions(actions: InputAction[] | InputAction): Promise<void> {
+    if (!Array.isArray(actions)) actions = [actions];
+    for (const action of actions) {
+      if (typeof action === "string") {
+        this.write?.(action);
+      } else {
+        await Bun.sleep(action.sleep);
+      }
     }
   }
 }

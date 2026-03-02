@@ -58,16 +58,16 @@ export interface Scene {
   continue(snapshot: Snapshot): SceneContinuation | null;
 
   /**
-   * Translate channel input into raw PTY bytes.
+   * Translate channel input into a sequence of PTY actions.
    *
-   * Called on the active scene when a channel sends input. Returns the
-   * byte string to write to the PTY, or `null` to decline (fall through
-   * to default handling).
+   * Called on the active scene when a channel sends input. Returns one or
+   * more {@link InputAction}s to execute in order, or `null` to decline
+   * (fall through to default handling).
    *
    * @param input - The structured input from a channel
-   * @returns Raw bytes to write to the PTY, or `null` to decline
+   * @returns Action(s) to execute, or `null` to decline
    */
-  encodeInput?(input: SceneInput): string | null;
+  encodeInput?(input: SceneInput): InputAction[] | InputAction | null;
 }
 
 /**
@@ -82,6 +82,9 @@ export interface SceneContinuation {
    */
   firm: boolean;
 }
+
+/** A single step in an input sequence: raw PTY bytes or a delay. */
+export type InputAction = string | { sleep: number };
 
 /**
  * Check whether a value satisfies the {@link Scene} interface shape.
