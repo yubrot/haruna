@@ -8,6 +8,7 @@
  */
 
 import type { SceneFactory } from "../interface.ts";
+import claudeCodeScene from "./claude-code/index.ts";
 import shellScene from "./shell/index.ts";
 
 /**
@@ -23,7 +24,8 @@ export const builtinSceneRegistry: ReadonlyMap<string, SceneFactory | string[]> 
   SceneFactory | string[]
 >([
   ["shell", shellScene],
-  ["builtin", ["shell"]],
+  ["claude-code", claudeCodeScene],
+  ["builtin", ["shell", "claude-code"]],
 ]);
 
 /**
