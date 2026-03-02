@@ -21,6 +21,7 @@ export class Gateway {
   private composite?: CompositeScene;
   private channels: Channel[] = [];
   private lastSnapshot: Snapshot | null = null;
+  private prevIdle = false;
   private readonly write: ((bytes: string) => void) | null;
 
   /**
@@ -44,10 +45,12 @@ export class Gateway {
     const events = this.composite?.process(snapshot).events ?? [];
     const newState = this.composite?.state ?? null;
 
+    const currentIdle = this.composite?.isIdle ?? false;
     if (newState !== prevState) {
-      const idle = newState !== null && newState === this.composite?.idleState ? true : undefined;
+      const idle = !this.prevIdle && currentIdle ? true : undefined;
       events.push({ type: "scene_state_changed", state: newState, idle });
     }
+    this.prevIdle = currentIdle;
     this.broadcast(snapshot, events);
   }
 
@@ -62,6 +65,7 @@ export class Gateway {
   replaceScenes(scenes?: Scene[]): void {
     const prevState = this.composite?.state ?? null;
     this.composite = scenes?.length ? new CompositeScene(scenes) : undefined;
+    this.prevIdle = false;
 
     // Notify channels if the active scene was cleared
     if (prevState !== null && this.lastSnapshot) {

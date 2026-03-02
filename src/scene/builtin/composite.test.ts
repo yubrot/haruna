@@ -304,12 +304,12 @@ describe("CompositeScene", () => {
     });
   });
 
-  describe("idleState", () => {
+  describe("isIdle", () => {
     test("delegates to active scene", () => {
       const scene: Scene = {
         priority: 0,
         state: "my-state",
-        idleState: "my-idle",
+        isIdle: true,
         detect() {
           return [];
         },
@@ -319,22 +319,22 @@ describe("CompositeScene", () => {
       };
       const composite = new CompositeScene([scene]);
 
-      expect(composite.idleState).toBeUndefined();
+      expect(composite.isIdle).toBe(false);
       composite.process(snap("anything"));
-      expect(composite.idleState).toBe("my-idle");
+      expect(composite.isIdle).toBe(true);
     });
 
-    test("returns undefined when active scene has no idleState", () => {
+    test("returns false when active scene has no isIdle property", () => {
       const scene = prefixScene("s", "Hello", 0);
       const composite = new CompositeScene([scene]);
       composite.process(snap("Hello"));
 
-      expect(composite.idleState).toBeUndefined();
+      expect(composite.isIdle).toBe(false);
     });
 
-    test("returns undefined when no scene is active", () => {
+    test("returns false when no scene is active", () => {
       const composite = new CompositeScene([]);
-      expect(composite.idleState).toBeUndefined();
+      expect(composite.isIdle).toBe(false);
     });
   });
 

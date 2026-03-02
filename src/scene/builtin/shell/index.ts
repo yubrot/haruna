@@ -55,8 +55,8 @@ class ShellScene implements Scene {
     return `shell(${this.shellState.type})`;
   }
 
-  get idleState(): string {
-    return "shell(idle)";
+  get isIdle(): boolean {
+    return this.shellState?.type === "idle";
   }
 
   detect(snapshot: Snapshot): SceneEvent[] | null {
@@ -156,7 +156,7 @@ class ShellScene implements Scene {
     return { events, firm: false };
   }
 
-  /** Transition to idle state, emitting input_changed and updating internal state. */
+  /** Transition to idle state, emitting `input_changed` and updating internal state. */
   private idle(prompt: PromptMatch, events: SceneEvent[]): SceneContinuation {
     events.push({
       type: "input_changed",

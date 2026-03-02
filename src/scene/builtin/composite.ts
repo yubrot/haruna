@@ -38,9 +38,9 @@ export class CompositeScene implements Scene {
     return this.activeScene?.state ?? null;
   }
 
-  /** Active child scene's idle state, or `undefined` when not defined. */
-  get idleState(): string | undefined {
-    return this.activeScene?.idleState;
+  /** Whether the active child scene is idle. */
+  get isIdle(): boolean {
+    return this.activeScene?.isIdle ?? false;
   }
 
   /**

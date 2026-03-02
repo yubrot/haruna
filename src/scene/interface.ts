@@ -28,12 +28,12 @@ export interface Scene {
   readonly state: string | null;
 
   /**
-   * The state string that represents the scene's idle state.
+   * Whether the scene is currently idle (waiting for user input).
    *
-   * When defined, the Gateway sets `idle: true` on `scene_state_changed`
-   * events whose `state` matches this value.
+   * When a scene transitions from non-idle to idle, the orchestrator
+   * emits a `scene_state_changed` event with `idle: true`.
    */
-  readonly idleState?: string;
+  readonly isIdle?: boolean;
 
   /**
    * Pattern check against a snapshot.
