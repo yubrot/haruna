@@ -7,6 +7,7 @@
 
 import { App } from "@slack/bolt";
 import { parseSceneInput, type SceneInput } from "../../scene/interface.ts";
+import { SequentialQueue } from "../../util/async.ts";
 import { Scheduler } from "../../util/scheduler.ts";
 import type { Channel, Frame, SendSceneInput } from "../interface.ts";
 import { applySceneEvent, emptyPostState, type PendingOp, type PostState } from "./state.ts";
@@ -67,8 +68,7 @@ export class SlackChannel implements Channel {
   /** Slack message `ts` of the most recently posted message (set after API success). */
   private currentTs: string | null = null;
   private readonly scheduler: Scheduler;
-  /** In-flight API operation promise, if any. */
-  private runningOp: Promise<void> | null = null;
+  private readonly opQueue: SequentialQueue;
 
   /** Cached bot user ID (resolved via `auth.test` at start). */
   private botUserId: string | null = null;
@@ -84,6 +84,10 @@ export class SlackChannel implements Channel {
       debounceMs: 100,
       minIntervalMs: 1000, // adjust to rate limit
       callback: () => this.run(),
+    });
+    this.opQueue = new SequentialQueue({
+      onError: (e) =>
+        console.error(`[haruna][${this.name}] op failed: ${e instanceof Error ? e.message : e}`),
     });
   }
 
@@ -193,10 +197,12 @@ export class SlackChannel implements Channel {
    * Close the Socket Mode WebSocket connection and release resources.
    */
   async stop(): Promise<void> {
-    while (this.state.pendingOps.length > 0 || this.runningOp) {
-      this.scheduler.flush();
-      if (this.runningOp) await this.runningOp;
+    this.scheduler.flush();
+    for (const op of this.state.pendingOps) {
+      this.opQueue.enqueue(() => this.executeOp(op));
     }
+    this.state = { ...this.state, pendingOps: [] };
+    await this.opQueue.drain();
     this.scheduler.dispose();
     await this.app?.stop();
     this.app = null;
@@ -230,16 +236,15 @@ export class SlackChannel implements Channel {
   }
 
   /**
-   * Kick off processing the next operation. Guards against re-entry;
-   * after the operation completes, re-schedules if more ops remain.
+   * Dequeue the next pending operation and enqueue it for execution.
+   * After the operation completes, re-schedules if more ops remain.
    */
   private run(): void {
-    if (this.runningOp) return;
     const [op, ...rest] = this.state.pendingOps;
     if (!op) return;
     this.state = { ...this.state, pendingOps: rest };
-    this.runningOp = this.executeOp(op).finally(() => {
-      this.runningOp = null;
+    this.opQueue.enqueue(async () => {
+      await this.executeOp(op);
       if (this.state.pendingOps.length > 0) this.scheduler.schedule();
     });
   }
