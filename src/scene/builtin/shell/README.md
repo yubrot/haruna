@@ -23,7 +23,7 @@ scenes:
 The `shell` scene is included in the `builtin` alias, so it is loaded by
 default unless explicitly excluded.
 
-### Properties
+## Properties
 
 | Property       | Default  | Description                              |
 | -------------- | -------- | ---------------------------------------- |
@@ -38,7 +38,9 @@ When `promptPrefix` is set, the scene expects a two-line prompt block
 $ echo "Hello"
 ```
 
-## States
+## Internals
+
+### States
 
 | State            | Description                                   |
 | ---------------- | --------------------------------------------- |

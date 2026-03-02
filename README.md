@@ -2,7 +2,6 @@
 
 **Under Development**: Immediate tasks
 
-- [ ] Claude Code Scene
 - [ ] Discord Channel
 - [ ] Configure trust mechanism
 
@@ -124,7 +123,7 @@ scenes:
 List of available scene types:
 
 - [`shell`](src/scene/builtin/shell/README.md) — Recognizes interactive shell prompts
-- TODO: `claude-code`
+- [`claude-code`](src/scene/builtin/claude-code/README.md) — Recognizes Claude Code CLI sessions
 
 ### `terminal`
 
