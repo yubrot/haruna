@@ -1,46 +1,100 @@
 /**
- * Pure state management for Slack channel output.
+ * Platform-agnostic post state management and operation coalescing.
  *
- * Defines the {@link PostState} type and transition functions that handle
- * scene events and operation coalescing without side effects.
+ * Defines the generic {@link PostState} type, {@link MessageFormatter} interface,
+ * and pure transition functions shared by all messaging-platform channels
+ * (Slack, Discord, etc.).
  *
  * @module
  */
 
-import type { SceneEvent } from "../../scene/interface.ts";
-import {
-  appendContext,
-  formatMessageContent,
-  formatPermissionRequired,
-  formatQuestion,
-  type SlackMessage,
-} from "./formatting.ts";
+import type { SceneEvent } from "../scene/interface.ts";
+import type { RichText } from "../vt/snapshot.ts";
 
 /**
  * Tracks the logical state of the most recent post and pending API operations.
  *
  * This is a pure data structure — transitions are performed by
  * {@link applySceneEvent} and never trigger side effects.
+ *
+ * @typeParam M - Platform-specific message type (e.g. SlackMessage, string)
  */
-export interface PostState {
+export interface PostState<M> {
   /** Logical state of the most recent post (for indicator/update tracking). */
   lastPost:
-    | { type: "message"; base: SlackMessage; indicator: string | null }
+    | { type: "message"; base: M; indicator: string | null }
     | { type: "question"; optionCount: number }
     | { type: "permission"; optionCount: number }
     | null;
   /** Pending API operations (coalesced on push). */
-  pendingOps: PendingOp[];
+  pendingOps: PendingOp<M>[];
 }
 
 /** An API operation waiting to be executed. */
-export type PendingOp =
-  | { type: "post"; message: SlackMessage }
-  | { type: "update"; message: SlackMessage }
+export type PendingOp<M> =
+  | { type: "post"; message: M }
+  | { type: "update"; message: M }
   | { type: "delete" };
 
-/** Initial state with no active post and no pending operations. */
-export const emptyPostState: PostState = { lastPost: null, pendingOps: [] };
+/**
+ * Create an initial state with no active post and no pending operations.
+ *
+ * @returns Empty post state
+ */
+export function emptyPostState<M>(): PostState<M> {
+  return { lastPost: null, pendingOps: [] };
+}
+
+/**
+ * Platform-specific message formatting contract.
+ *
+ * Channels implement this interface to convert scene events into
+ * their native message format (e.g. Slack Block Kit, Discord Markdown).
+ *
+ * @typeParam M - Platform-specific message type
+ */
+export interface MessageFormatter<M> {
+  /**
+   * Format message content into a platform message.
+   *
+   * @param style - `"text"` for styled text, `"block"` for code block
+   * @param content - Rich text lines to render
+   * @returns Platform message, or `null` when content is empty
+   */
+  formatMessageContent(style: "text" | "block", content: RichText[]): M | null;
+
+  /**
+   * Format a question event into a platform message.
+   *
+   * @param event - Question payload
+   * @returns Platform message with question body and option list
+   */
+  formatQuestion(event: {
+    question: string;
+    options: { label: string; description?: string }[];
+  }): M;
+
+  /**
+   * Format a permission-required event into a platform message.
+   *
+   * @param event - Permission-required payload
+   * @returns Platform message with warning and options
+   */
+  formatPermissionRequired(event: {
+    command: string;
+    description?: string;
+    options: { label: string; description?: string }[];
+  }): M;
+
+  /**
+   * Return a copy of `message` with a context indicator appended.
+   *
+   * @param message - Base message
+   * @param text - Context text (e.g. indicator status)
+   * @returns New message with context added
+   */
+  appendContext(message: M, text: string): M;
+}
 
 /**
  * Apply a scene event to the post state, producing a new state.
@@ -52,24 +106,30 @@ export const emptyPostState: PostState = { lastPost: null, pendingOps: [] };
  * @param state - Current post state
  * @param event - Scene event to apply
  * @param echo - Whether echo events should be forwarded
+ * @param fmt - Platform-specific message formatter
  * @returns New post state after applying the event
  */
-export function applySceneEvent(state: PostState, event: SceneEvent, echo: boolean): PostState {
+export function applySceneEvent<M>(
+  state: PostState<M>,
+  event: SceneEvent,
+  echo: boolean,
+  fmt: MessageFormatter<M>,
+): PostState<M> {
   if (!echo && "echo" in event && event.echo) return state;
 
   switch (event.type) {
     case "message_created":
-      return applyMessageCreated(state, event);
+      return applyMessageCreated(state, event, fmt);
     case "last_message_updated":
-      return applyLastMessageUpdated(state, event);
+      return applyLastMessageUpdated(state, event, fmt);
     case "indicator_changed":
-      return applyIndicatorChanged(state, event);
+      return applyIndicatorChanged(state, event, fmt);
     case "question_created":
-      return applyQuestionCreated(state, event);
+      return applyQuestionCreated(state, event, fmt);
     case "last_question_updated":
-      return applyLastQuestionUpdated(state, event);
+      return applyLastQuestionUpdated(state, event, fmt);
     case "permission_required":
-      return applyPermissionRequired(state, event);
+      return applyPermissionRequired(state, event, fmt);
     case "scene_state_changed":
       return state;
     case "input_changed":
@@ -90,18 +150,16 @@ export function applySceneEvent(state: PostState, event: SceneEvent, echo: boole
  * @param op - Operation to append
  * @returns New ops array with the operation applied
  */
-export function pushOp(ops: readonly PendingOp[], op: PendingOp): PendingOp[] {
+export function pushOp<M>(ops: readonly PendingOp<M>[], op: PendingOp<M>): PendingOp<M>[] {
   switch (op.type) {
     case "update": {
       const tail = ops[ops.length - 1];
       if (tail?.type === "update") {
-        // Coalesce: replace the trailing update
         return [...ops.slice(0, -1), op];
       }
       return [...ops, op];
     }
     case "delete": {
-      // Remove trailing updates — they target a message about to be deleted
       let end = ops.length;
       while (end > 0 && ops[end - 1]?.type === "update") end--;
       return [...ops.slice(0, end), op];
@@ -111,37 +169,33 @@ export function pushOp(ops: readonly PendingOp[], op: PendingOp): PendingOp[] {
   }
 }
 
-function applyMessageCreated(
-  state: PostState,
+function applyMessageCreated<M>(
+  state: PostState<M>,
   event: SceneEvent & { type: "message_created" },
-): PostState {
-  const message = formatMessageContent(event.style, event.content);
+  fmt: MessageFormatter<M>,
+): PostState<M> {
+  const message = fmt.formatMessageContent(event.style, event.content);
   if (!message) return state;
 
-  // Strip indicator from the previous message
   let ops = state.pendingOps;
   if (state.lastPost?.type === "message" && state.lastPost.indicator) {
-    ops = pushOp(ops, {
-      type: "update",
-      message: state.lastPost.base,
-    });
+    ops = pushOp(ops, { type: "update", message: state.lastPost.base });
   }
 
-  // Carry forward the active indicator
   const indicator = state.lastPost?.type === "message" ? state.lastPost.indicator : null;
   const lastPost = { type: "message" as const, base: message, indicator };
-  const postMessage = indicator ? appendContext(message, indicator) : message;
+  const postMessage = indicator ? fmt.appendContext(message, indicator) : message;
   ops = pushOp(ops, { type: "post", message: postMessage });
 
   return { lastPost, pendingOps: ops };
 }
 
-function applyLastMessageUpdated(
-  state: PostState,
+function applyLastMessageUpdated<M>(
+  state: PostState<M>,
   event: SceneEvent & { type: "last_message_updated" },
-): PostState {
+  fmt: MessageFormatter<M>,
+): PostState<M> {
   if (event.content === null) {
-    // Delete the last message
     if (state.lastPost?.type !== "message") return state;
     return {
       lastPost: null,
@@ -149,48 +203,45 @@ function applyLastMessageUpdated(
     };
   }
 
-  const message = formatMessageContent(event.style, event.content);
+  const message = fmt.formatMessageContent(event.style, event.content);
   if (!message) return state;
   if (state.lastPost?.type !== "message") return state;
 
   const lastPost = { ...state.lastPost, base: message };
-  const updateMessage = lastPost.indicator ? appendContext(message, lastPost.indicator) : message;
+  const updateMessage = lastPost.indicator
+    ? fmt.appendContext(message, lastPost.indicator)
+    : message;
   return {
     lastPost,
-    pendingOps: pushOp(state.pendingOps, {
-      type: "update",
-      message: updateMessage,
-    }),
+    pendingOps: pushOp(state.pendingOps, { type: "update", message: updateMessage }),
   };
 }
 
-function applyIndicatorChanged(
-  state: PostState,
+function applyIndicatorChanged<M>(
+  state: PostState<M>,
   event: SceneEvent & { type: "indicator_changed" },
-): PostState {
+  fmt: MessageFormatter<M>,
+): PostState<M> {
   if (state.lastPost?.type !== "message") return state;
 
   const indicator = event.active ? event.text : null;
   const lastPost = { ...state.lastPost, indicator };
   const updateMessage = indicator
-    ? appendContext(state.lastPost.base, indicator)
+    ? fmt.appendContext(state.lastPost.base, indicator)
     : state.lastPost.base;
   return {
     lastPost,
-    pendingOps: pushOp(state.pendingOps, {
-      type: "update",
-      message: updateMessage,
-    }),
+    pendingOps: pushOp(state.pendingOps, { type: "update", message: updateMessage }),
   };
 }
 
-function applyQuestionCreated(
-  state: PostState,
+function applyQuestionCreated<M>(
+  state: PostState<M>,
   event: SceneEvent & { type: "question_created" },
-): PostState {
-  const message = formatQuestion(event);
+  fmt: MessageFormatter<M>,
+): PostState<M> {
+  const message = fmt.formatQuestion(event);
 
-  // Strip indicator from the previous message
   let ops = state.pendingOps;
   if (state.lastPost?.type === "message" && state.lastPost.indicator) {
     ops = pushOp(ops, { type: "update", message: state.lastPost.base });
@@ -200,11 +251,12 @@ function applyQuestionCreated(
   return { lastPost: { type: "question", optionCount: event.options.length }, pendingOps: ops };
 }
 
-function applyLastQuestionUpdated(
-  state: PostState,
+function applyLastQuestionUpdated<M>(
+  state: PostState<M>,
   event: SceneEvent & { type: "last_question_updated" },
-): PostState {
-  const message = formatQuestion(event);
+  fmt: MessageFormatter<M>,
+): PostState<M> {
+  const message = fmt.formatQuestion(event);
   if (state.lastPost?.type !== "question") return state;
 
   return {
@@ -213,13 +265,13 @@ function applyLastQuestionUpdated(
   };
 }
 
-function applyPermissionRequired(
-  state: PostState,
+function applyPermissionRequired<M>(
+  state: PostState<M>,
   event: SceneEvent & { type: "permission_required" },
-): PostState {
-  const message = formatPermissionRequired(event);
+  fmt: MessageFormatter<M>,
+): PostState<M> {
+  const message = fmt.formatPermissionRequired(event);
 
-  // Strip indicator from the previous message
   let ops = state.pendingOps;
   if (state.lastPost?.type === "message" && state.lastPost.indicator) {
     ops = pushOp(ops, { type: "update", message: state.lastPost.base });
