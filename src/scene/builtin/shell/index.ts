@@ -131,7 +131,15 @@ class ShellScene implements Scene {
       };
     }
 
-    const boundary = prompt ? prompt.promptStart : snapshot.linesOffset + snapshot.lines.length;
+    // The cursor line is considered "in progress" — the child process may
+    // still be writing to it (or it may be a blank line about to be
+    // overwritten). Only lines strictly above the cursor are committed.
+    // The cursor line itself is emitted later when new content pushes it
+    // upward or the prompt returns.  This intentionally means there is no
+    // `last_message_updated` for progressive single-line output; the
+    // trade-off avoids prematurely advancing emittedUpTo past a position
+    // the child will overwrite (which would silently drop output lines).
+    const boundary = prompt ? prompt.promptStart : cursorLineIndex(snapshot);
 
     // Content before offset has scrolled out of the snapshot and is
     // no longer accessible; advance past it.

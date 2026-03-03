@@ -46,3 +46,14 @@ $ echo "Hello"
 | ---------------- | --------------------------------------------- |
 | `shell(idle)`    | Prompt visible, waiting for user input        |
 | `shell(running)` | Command executing, prompt no longer at cursor |
+
+### Limitations
+
+- **Cursor-line hold-back**: During `running` state, only lines _above_ the
+  cursor are emitted as `message_created`. The cursor line itself is
+  considered in-progress and held back until new output pushes it upward or
+  the prompt returns. This means the most recent line of command output may
+  be delayed by one snapshot. No `last_message_updated` events are emitted
+  for progressive single-line changes — this is an intentional trade-off to
+  avoid prematurely marking a line as emitted when the child process may
+  still overwrite it.

@@ -146,26 +146,25 @@ describe("Shell Scene", () => {
   });
 
   test("multiline-input: heredoc triggers running then output on EOF", async () => {
-    // NOTE: With boundary at end-of-lines, the live ">" cursor line is
-    // included in committed output. The heredoc continuation lines and the
-    // final cat output appear as separate message_created events.
+    // The cursor line (live ">") is held back as in-progress. It is
+    // emitted together with the cat output when the prompt returns.
     const trace = await traceShell(`${FIXTURES_DIR}/multiline-input.dump`);
 
     expect(trace).toMatchObject([
       // Snapshot 0: detect
       { events: [{ type: "input_changed", active: true, text: "" }] },
-      // Snapshot 1: idle → running — prompt block + continuation lines including ">"
+      // Snapshot 1: idle → running — prompt block + continuation lines (cursor line held back)
       {
         events: [
           inputOff,
           block("$ cat << 'EOF'"),
-          text("> line one", "> line two", "> line three", ">"),
+          text("> line one", "> line two", "> line three"),
         ],
       },
-      // Snapshot 2: running → idle — final output + prompt
+      // Snapshot 2: running → idle — held-back "> EOF" + cat output + prompt
       {
         events: [
-          text("line one", "line two", "line three"),
+          text("> EOF", "line one", "line two", "line three"),
           { type: "input_changed", active: true, text: "" },
         ],
       },
@@ -342,24 +341,23 @@ describe("Shell Scene", () => {
     ]);
   });
 
-  test("progress-overwrite: in-place \\r overwrites are captured as snapshots of visible content", async () => {
-    // NOTE: With boundary at end-of-lines, the cursor line is always
-    // included. In-place \r overwrites appear as the value at each
-    // snapshot; intermediate values between snapshots are not captured.
+  test("progress-overwrite: in-place \\r overwrites are held back until prompt returns", async () => {
+    // The cursor line where \r overwrites happen is held back as
+    // in-progress. The final value is emitted when the prompt returns.
     const trace = await traceShell(`${FIXTURES_DIR}/progress-overwrite.dump`);
 
     expect(trace).toMatchObject([
       // Snapshot 0: detect
       { events: [{ type: "input_changed", active: true, text: "" }] },
-      // Snapshot 1: idle → running — prompt block + progress at snapshot time
+      // Snapshot 1: idle → running — prompt block only (progress cursor line held back)
       {
-        events: [inputOff, { style: "block" }, text("progress: 2/5")],
+        events: [inputOff, { style: "block" }],
       },
-      // Snapshot 2: running — no new lines (in-place overwrite, same line range)
+      // Snapshot 2: running — no events (cursor line still held back)
       { events: [] },
-      // Snapshot 3: running → idle — prompt returns
+      // Snapshot 3: running → idle — final progress value emitted + prompt
       {
-        events: [{ type: "input_changed", active: true, text: "" }],
+        events: [text("progress: 5/5"), { type: "input_changed", active: true, text: "" }],
       },
     ]);
   });
