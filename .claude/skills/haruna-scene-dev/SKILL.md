@@ -108,9 +108,15 @@ haruna dump <file> --diff=2            # all frame-to-frame diffs
 # With time range
 haruna dump <file> --from <ts> --to <ts> --list
 
-# Verify existing scene recognition
+# Verify existing scene recognition (event type names)
 haruna dump <file> --at <ts> --scene
+
+# Verbose scene analysis (event content details)
+haruna dump <file> --scene=verbose --from <ts> --to <ts>
 ```
+
+Note: `--scene` processes snapshots from the beginning of the dump, so scene
+state is always fully accumulated even when `--from` skips early entries.
 
 **Timestamp formats**: raw ms (`1771726347153`) or relative (`30s`, `1.5m`, `500ms`).
 
@@ -467,7 +473,8 @@ bun run check                                # biome lint + tsc type check
 To verify scene recognition against existing dumps:
 
 ```sh
-haruna dump <file> --scene              # list with scene classification
+haruna dump <file> --scene              # list with scene state and event types
+haruna dump <file> --scene=verbose      # include event content details
 ```
 
 **Iteration cycle**:

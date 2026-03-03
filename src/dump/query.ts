@@ -70,7 +70,7 @@ export interface ListEntry {
   totalLines?: number;
   matches?: { row: number; text: string }[];
   state?: string;
-  events?: string[];
+  events?: SceneEvent[];
 }
 
 /** Ordered list of diff entries. */
@@ -379,8 +379,7 @@ function createListEntryPusher(
 
     if (includeScenes) {
       listEntry.state = sceneState ?? undefined;
-      const eventTypes = sceneEvents.map((e) => e.type);
-      if (eventTypes.length > 0) listEntry.events = eventTypes;
+      if (sceneEvents.length > 0) listEntry.events = sceneEvents;
     }
 
     entries.push(listEntry);

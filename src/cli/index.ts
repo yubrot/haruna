@@ -88,7 +88,7 @@ program
     parseDiffLevel,
   )
   .option("--at <ts>", "include snapshot at specific timestamp")
-  .option("--scene", "enrich --list and --at with scene analysis")
+  .option("--scene [level]", "enrich output with scene analysis (type or verbose)")
   .option("--search <pattern>", "filter --list entries by regex pattern")
   .option("--from <ts>", "start timestamp for --list/--diff range")
   .option("--to <ts>", "end timestamp for --list/--diff range")
@@ -118,7 +118,7 @@ program
         list?: true;
         diff?: 0 | 1 | 2 | true;
         at?: string;
-        scene?: true;
+        scene?: string | true;
         search?: string;
         from?: string;
         to?: string;
@@ -147,6 +147,19 @@ program
         }
       }
 
+      // Normalize --scene: undefined → false, true (no value) → "type", string → validated level
+      let scene: "type" | "verbose" | false = false;
+      if (opts.scene === true) {
+        scene = "type";
+      } else if (opts.scene !== undefined) {
+        if (opts.scene !== "type" && opts.scene !== "verbose") {
+          throw new InvalidArgumentError(
+            `Invalid scene level: ${opts.scene}. Must be "type" or "verbose".`,
+          );
+        }
+        scene = opts.scene;
+      }
+
       const config = await loadConfig(opts.config);
       process.exit(
         await runDump(
@@ -156,7 +169,7 @@ program
             list,
             diff,
             at: opts.at,
-            scene: opts.scene ?? false,
+            scene,
             search: opts.search,
             from: opts.from,
             to: opts.to,
