@@ -10,6 +10,7 @@ import {
   type RichText,
   richTextEqual,
   richTextLinesEqual,
+  richTextToMarkdown,
   richTextToPlainText,
   type Snapshot,
   snapshotsEqual,
@@ -590,6 +591,90 @@ describe("richTextToPlainText", () => {
 
   test("returns empty string for empty string RichText", () => {
     expect(richTextToPlainText("")).toBe("");
+  });
+});
+
+describe("richTextToMarkdown", () => {
+  test("returns plain string as-is", () => {
+    expect(richTextToMarkdown("hello")).toBe("hello");
+  });
+
+  test("wraps bold text in double asterisks", () => {
+    const rt: RichText = [{ t: "bold", b: true }];
+    expect(richTextToMarkdown(rt)).toBe("**bold**");
+  });
+
+  test("wraps italic text in single asterisks", () => {
+    const rt: RichText = [{ t: "italic", i: true }];
+    expect(richTextToMarkdown(rt)).toBe("*italic*");
+  });
+
+  test("wraps strikethrough text in tildes", () => {
+    const rt: RichText = [{ t: "strike", s: true }];
+    expect(richTextToMarkdown(rt)).toBe("~~strike~~");
+  });
+
+  test("combines bold and italic", () => {
+    const rt: RichText = [{ t: "combo", b: true, i: true }];
+    expect(richTextToMarkdown(rt)).toBe("***combo***");
+  });
+
+  test("combines bold, italic, and strikethrough", () => {
+    const rt: RichText = [{ t: "all", b: true, i: true, s: true }];
+    expect(richTextToMarkdown(rt)).toBe("***~~all~~***");
+  });
+
+  test("ignores unsupported styles (dim, underline, inverse, overline)", () => {
+    const rt: RichText = [{ t: "styled", d: true, u: true, v: true, o: true }];
+    expect(richTextToMarkdown(rt)).toBe("styled");
+  });
+
+  test("handles mixed plain and styled segments", () => {
+    const rt: RichText = ["before ", { t: "bold", b: true }, " after"];
+    expect(richTextToMarkdown(rt)).toBe("before **bold** after");
+  });
+
+  test("returns empty string for empty segments", () => {
+    expect(richTextToMarkdown([])).toBe("");
+    expect(richTextToMarkdown("")).toBe("");
+  });
+
+  test("skips empty styled segment text", () => {
+    const rt: RichText = [{ t: "", b: true }];
+    expect(richTextToMarkdown(rt)).toBe("");
+  });
+
+  test("escapes Markdown metacharacters in plain string", () => {
+    expect(richTextToMarkdown("hello *world* and **bold**")).toBe(
+      "hello \\*world\\* and \\*\\*bold\\*\\*",
+    );
+  });
+
+  test("escapes backticks and tildes", () => {
+    expect(richTextToMarkdown("`code` and ~~strike~~")).toBe("\\`code\\` and \\~\\~strike\\~\\~");
+  });
+
+  test("escapes backslashes, pipes, and block quotes", () => {
+    expect(richTextToMarkdown("a\\b | c > d")).toBe("a\\\\b \\| c \\> d");
+  });
+
+  test("escapes underscores", () => {
+    expect(richTextToMarkdown("snake_case_name")).toBe("snake\\_case\\_name");
+  });
+
+  test("escapes metacharacters in plain segments of RichText array", () => {
+    const rt: RichText = ["hello *world*"];
+    expect(richTextToMarkdown(rt)).toBe("hello \\*world\\*");
+  });
+
+  test("escapes metacharacters in styled segment text", () => {
+    const rt: RichText = [{ t: "has *stars*", b: true }];
+    expect(richTextToMarkdown(rt)).toBe("**has \\*stars\\***");
+  });
+
+  test("handles mixed escaped and styled segments", () => {
+    const rt: RichText = ["before *", { t: "bold `code`", b: true }, " after ~"];
+    expect(richTextToMarkdown(rt)).toBe("before \\***bold \\`code\\`** after \\~");
   });
 });
 
