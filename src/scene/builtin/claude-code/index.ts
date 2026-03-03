@@ -25,7 +25,7 @@ import {
 } from "./input-area.ts";
 
 /** Delay (ms) before CR so Ink treats text and submit as separate events. */
-const CR_DELAY_MS = 10;
+const CR_DELAY_MS = 50;
 
 /** Delay (ms) after sending a number key for option selection to settle. */
 const SELECT_SETTLE_MS = 50;

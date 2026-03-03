@@ -467,7 +467,7 @@ describe("Claude Code Scene", () => {
       const scene = await sceneAfterSnapshots(`${FIXTURES_DIR}/idle.dump`, 1);
       expect(scene.encodeInput?.({ type: "text", content: "hello" })).toEqual([
         "hello",
-        { sleep: 10 },
+        { sleep: 50 },
         "\r",
       ]);
     });
@@ -485,7 +485,7 @@ describe("Claude Code Scene", () => {
         "\x1b",
         { sleep: 300 },
         "hello",
-        { sleep: 10 },
+        { sleep: 50 },
         "\r",
       ]);
     });
@@ -497,7 +497,7 @@ describe("Claude Code Scene", () => {
         "\x1b",
         { sleep: 300 },
         "hello",
-        { sleep: 10 },
+        { sleep: 50 },
         "\r",
       ]);
     });
