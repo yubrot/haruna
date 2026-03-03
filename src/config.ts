@@ -171,38 +171,6 @@ export class Config {
   }
 
   /**
-   * Find and load a config file by walking up from `cwd`.
-   *
-   * When no config file is found, returns a Config with default values
-   * and `baseDir` set to `cwd`.
-   *
-   * @param cwd - The directory to start searching from
-   * @returns A new Config instance
-   */
-  static async loadAtDir(cwd: string): Promise<Config> {
-    const path = findConfigFile(cwd);
-    return Config.load(path, path ? dirname(path) : cwd);
-  }
-
-  /**
-   * Load configuration from an explicit file path.
-   *
-   * Unlike {@link loadAtDir}, this does not search parent directories.
-   * The file must exist; an error is thrown otherwise.
-   *
-   * @param configPath - Path to the config file (resolved relative to cwd if not absolute)
-   * @returns A new Config instance with `baseDir` set to the config file's directory
-   * @throws {Error} If the file does not exist
-   */
-  static async loadFromFile(configPath: string): Promise<Config> {
-    const absPath = resolve(configPath);
-    if (!existsSync(absPath)) {
-      throw new Error(`Config file not found: ${absPath}`);
-    }
-    return Config.load(absPath, dirname(absPath));
-  }
-
-  /**
    * Reload configuration from the same file path.
    *
    * @returns A new Config instance with fresh data from disk
@@ -290,7 +258,7 @@ const CONFIG_FILENAMES = [".haruna.yml", ".haruna.yaml"];
  * @param cwd - The directory to start searching from
  * @returns The absolute path to the config file, or `null` if not found
  */
-function findConfigFile(cwd: string): string | null {
+export function findConfigFile(cwd: string): string | null {
   let dir = resolve(cwd);
   for (;;) {
     for (const name of CONFIG_FILENAMES) {

@@ -1,9 +1,5 @@
 # haruna
 
-**Under Development**: Immediate tasks
-
-- [ ] Configure trust mechanism
-
 Turn any CLI session into a live conversation.
 haruna bridges any interactive CLI to any messaging platform — bidirectionally.
 
@@ -147,6 +143,20 @@ so secrets never need to appear in the config file:
 
 - `${VAR}` — replaced with the value of `VAR`, or empty string if unset
 - `${VAR:default}` — replaced with the value of `VAR`, or `"default"` if unset
+
+### Config trust
+
+haruna requires you to **trust** the directory containing the config file before
+loading it. On first run haruna prompts interactively; the decision is persisted
+under `$XDG_STATE_HOME/haruna/trusted-dirs/`. Set `CI=true` to skip the check in
+non-interactive environments. You can also manage trust explicitly:
+
+```sh
+haruna trust            # trust cwd
+haruna trust /path/dir  # trust a specific directory
+haruna trust --revoke   # revoke trust for cwd
+haruna trust --list     # list all trusted directories
+```
 
 # Development
 

@@ -6,24 +6,32 @@
  * @module
  */
 
+import { dirname, resolve } from "node:path";
 import { Command, InvalidArgumentError } from "commander";
-import { Config } from "../config.ts";
+import { Config, findConfigFile } from "../config.ts";
 import { runDump } from "./dump.ts";
 import { runExec } from "./exec.ts";
 import { runRecord } from "./record.ts";
 import { runReplay } from "./replay.ts";
+import { ensureTrusted, runTrust } from "./trust.ts";
 
 /**
  * Load configuration from an explicit path or by searching upward from cwd.
+ *
+ * Checks directory trust before loading the config file.
  *
  * @param configPath - Explicit config file path, or `undefined` to search
  * @returns Resolved configuration
  */
 async function loadConfig(configPath?: string): Promise<Config> {
   try {
-    return configPath
-      ? await Config.loadFromFile(configPath)
-      : await Config.loadAtDir(process.cwd());
+    const configFile = configPath ? resolve(configPath) : findConfigFile(process.cwd());
+    if (configFile) {
+      await ensureTrusted(dirname(configFile));
+    }
+    return configFile
+      ? await Config.load(configFile, dirname(configFile))
+      : await Config.load(null, process.cwd());
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     console.error(`[haruna] Failed to load config: ${message}`);
@@ -72,6 +80,17 @@ program
   .option("-o, --output <path>", "output dump file path")
   .action(async (script: string, opts: { output?: string }) => {
     process.exit(await runRecord(script, opts.output));
+  });
+
+// trust
+program
+  .command("trust")
+  .description("Manage trusted config directories")
+  .argument("[dir]", "directory to trust or revoke (default: cwd)")
+  .option("--revoke", "revoke trust for the directory")
+  .option("--list", "list all trusted directories")
+  .action(async (dir: string | undefined, opts: { revoke?: true; list?: true }) => {
+    process.exit(await runTrust(dir, opts));
   });
 
 // dump

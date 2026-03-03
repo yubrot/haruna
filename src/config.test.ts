@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { useTempDir } from "./__testing.ts";
-import { Config, interpolateEnvVars, parseConfig } from "./config.ts";
+import { Config, findConfigFile, interpolateEnvVars, parseConfig } from "./config.ts";
 
 function writeScene(dir: string, fileName: string, label: string): string {
   const path = join(dir, fileName);
@@ -66,87 +66,58 @@ describe("interpolateEnvVars", () => {
 describe("Config", () => {
   const { dir } = useTempDir("config-test");
 
-  describe("loadAtDir", () => {
-    test("finds .haruna.yaml in cwd", async () => {
-      const configPath = join(dir, ".haruna.yaml");
-      writeFileSync(configPath, "terminal:\n  scrollback: 100\n");
-      const config = await Config.loadAtDir(dir);
-      expect(config.path).toBe(configPath);
-      expect(config.terminal.scrollback).toBe(100);
+  describe("findConfigFile", () => {
+    test("finds .haruna.yaml in cwd", () => {
+      writeFileSync(join(dir, ".haruna.yaml"), "terminal:\n  scrollback: 100\n");
+      expect(findConfigFile(dir)).toBe(join(dir, ".haruna.yaml"));
     });
 
-    test("finds .haruna.yml in cwd", async () => {
-      const configPath = join(dir, ".haruna.yml");
-      writeFileSync(configPath, "channels: []\n");
-      const config = await Config.loadAtDir(dir);
-      expect(config.path).toBe(configPath);
+    test("finds .haruna.yml in cwd", () => {
+      writeFileSync(join(dir, ".haruna.yml"), "channels: []\n");
+      expect(findConfigFile(dir)).toBe(join(dir, ".haruna.yml"));
     });
 
-    test("prefers .haruna.yml over .haruna.yaml", async () => {
+    test("prefers .haruna.yml over .haruna.yaml", () => {
       writeFileSync(join(dir, ".haruna.yaml"), "scenes: []\n");
       writeFileSync(join(dir, ".haruna.yml"), "scenes: []\n");
-      const config = await Config.loadAtDir(dir);
-      expect(config.path).toBe(join(dir, ".haruna.yml"));
+      expect(findConfigFile(dir)).toBe(join(dir, ".haruna.yml"));
     });
 
-    test("finds config in parent directory", async () => {
+    test("finds config in parent directory", () => {
       const child = join(dir, "subdir");
       mkdirSync(child, { recursive: true });
-      const configPath = join(dir, ".haruna.yaml");
-      writeFileSync(configPath, "scenes: []\n");
-      const config = await Config.loadAtDir(child);
-      expect(config.path).toBe(configPath);
+      writeFileSync(join(dir, ".haruna.yaml"), "scenes: []\n");
+      expect(findConfigFile(child)).toBe(join(dir, ".haruna.yaml"));
     });
 
-    test("returns defaults when no config file exists", async () => {
-      const config = await Config.loadAtDir(dir);
-      expect(config.path).toBeNull();
-      expect(config.terminal.scrollback).toBe(500);
-    });
-
-    test("sets baseDir to config file directory when found", async () => {
-      const configPath = join(dir, ".haruna.yaml");
-      writeFileSync(configPath, "scenes: []\n");
-      const config = await Config.loadAtDir(dir);
-      expect(config.baseDir).toBe(dir);
-    });
-
-    test("sets baseDir to cwd when no config file exists", async () => {
-      const config = await Config.loadAtDir(dir);
-      expect(config.baseDir).toBe(dir);
-    });
-
-    test("sets baseDir to config directory when found in parent", async () => {
-      const child = join(dir, "child-dir");
-      mkdirSync(child, { recursive: true });
-      const configPath = join(dir, ".haruna.yaml");
-      writeFileSync(configPath, "scenes: []\n");
-      const config = await Config.loadAtDir(child);
-      expect(config.baseDir).toBe(dir);
+    test("returns null when no config file exists", () => {
+      expect(findConfigFile(dir)).toBeNull();
     });
   });
 
-  describe("loadFromFile", () => {
-    test("loads config from explicit path", async () => {
+  describe("load", () => {
+    test("loads config from a file", async () => {
       const configPath = join(dir, ".haruna.yaml");
       writeFileSync(configPath, "terminal:\n  scrollback: 42\n");
-      const config = await Config.loadFromFile(configPath);
+      const config = await Config.load(configPath, dir);
       expect(config.path).toBe(configPath);
       expect(config.terminal.scrollback).toBe(42);
-      expect(config.baseDir).toBe(dirname(configPath));
+      expect(config.baseDir).toBe(dir);
     });
 
-    test("throws when file does not exist", async () => {
-      const missing = join(dir, "nonexistent.yaml");
-      await expect(Config.loadFromFile(missing)).rejects.toThrow(/Config file not found/);
+    test("returns defaults when path is null", async () => {
+      const config = await Config.load(null, dir);
+      expect(config.path).toBeNull();
+      expect(config.terminal.scrollback).toBe(500);
+      expect(config.baseDir).toBe(dir);
     });
 
-    test("sets baseDir to config file directory", async () => {
+    test("sets baseDir to the provided value", async () => {
       const sub = join(dir, "configs");
       mkdirSync(sub, { recursive: true });
       const configPath = join(sub, "my-config.yml");
       writeFileSync(configPath, "scenes: []\n");
-      const config = await Config.loadFromFile(configPath);
+      const config = await Config.load(configPath, sub);
       expect(config.baseDir).toBe(sub);
     });
   });
@@ -156,7 +127,7 @@ describe("Config", () => {
       const configPath = join(dir, ".haruna.yaml");
       writeFileSync(configPath, "terminal:\n  scrollback: 100\n");
 
-      const config = await Config.loadAtDir(dir);
+      const config = await Config.load(configPath, dir);
       expect(config.terminal.scrollback).toBe(100);
 
       writeFileSync(configPath, "terminal:\n  scrollback: 200\n");
@@ -175,7 +146,7 @@ describe("Config", () => {
     test("preserves baseDir after reload", async () => {
       const configPath = join(dir, ".haruna.yaml");
       writeFileSync(configPath, "terminal:\n  scrollback: 100\n");
-      const config = await Config.loadAtDir(dir);
+      const config = await Config.load(configPath, dir);
       const reloaded = await config.reload();
       expect(reloaded.baseDir).toBe(config.baseDir);
     });
