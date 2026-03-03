@@ -190,8 +190,12 @@ function extractSnapshot(
   };
 
   if (options.scenes !== null) {
+    // Iterate from the beginning so scene state accumulates correctly
     const scene = new CompositeScene(options.scenes);
-    scene.process(entry.snapshot);
+    for (const { snapshot } of reader.snapshots()) {
+      scene.process(snapshot);
+      if (snapshot.timestamp >= entry.snapshot.timestamp) break;
+    }
     if (scene.state !== null) {
       result.state = scene.state;
     }
@@ -281,20 +285,26 @@ function collectListAndDiff(
       ? createDiffCollector(query.diff, query.context)
       : null;
 
+  // When scenes are active, iterate from the beginning so scene state
+  // accumulates correctly even when --from skips early snapshots.
+  const iterFrom = scene !== null ? undefined : query.from;
+
   let consumed = 0;
 
-  for (const { snapshot, delta } of reader.snapshots(query.from)) {
-    if (query.to !== undefined && snapshot.timestamp > query.to) break;
-
-    const plainLines = snapshot.lines.map(richTextToPlainText);
-
-    // Scene analysis (stateful — must run for every snapshot)
+  for (const { snapshot, delta } of reader.snapshots(iterFrom)) {
+    // Scene analysis (stateful — must run for every snapshot, even before from)
     let sceneState: string | null = null;
     let sceneEvents: SceneEvent[] = [];
     if (scene) {
       sceneEvents = scene.process(snapshot).events;
       sceneState = scene.state;
     }
+
+    // Skip entries before display range (after scene processing)
+    if (query.from !== undefined && snapshot.timestamp < query.from) continue;
+    if (query.to !== undefined && snapshot.timestamp > query.to) break;
+
+    const plainLines = snapshot.lines.map(richTextToPlainText);
 
     // Pattern filter
     let matchLines: { row: number; text: string }[] | undefined;
