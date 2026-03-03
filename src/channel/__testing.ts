@@ -7,7 +7,7 @@
  * @module
  */
 
-import type { SceneInput } from "../scene/interface.ts";
+import type { SceneEvent, SceneInput } from "../scene/interface.ts";
 import { snapshot } from "../vt/__testing.ts";
 import type { Frame, SendSceneInput } from "./interface.ts";
 
@@ -32,21 +32,19 @@ export function collectingSend(): {
 /**
  * Create a {@link Frame} for testing.
  *
- * Each string in `messages` becomes a `message_created` event.
+ * String entries are converted to `message_created` events;
+ * {@link SceneEvent} objects are passed through as-is.
  *
- * @param messages - Messages to include as scene events (defaults to none)
- * @returns A Frame with a default snapshot and the specified message events
+ * @param events - Events to include (strings become `message_created`; defaults to none)
+ * @returns A Frame with a default snapshot and the specified events
  */
-export function frame(messages: string[] = []): Frame {
+export function frame(events: (string | SceneEvent)[] = []): Frame {
   return {
     snapshot: snapshot(["hello"]),
-    events: messages.map(
-      (content) =>
-        ({
-          type: "message_created",
-          style: "text",
-          content: [content],
-        }) as const,
+    events: events.map((e) =>
+      typeof e === "string"
+        ? ({ type: "message_created", style: "text", content: [e] } as const)
+        : e,
     ),
   };
 }

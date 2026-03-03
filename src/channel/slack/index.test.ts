@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
-import type { SceneEvent } from "../../scene/interface.ts";
-import { waitFor } from "../__testing.ts";
-import type { Frame, SendSceneInput } from "../interface.ts";
+import { frame, waitFor } from "../__testing.ts";
+import type { SendSceneInput } from "../interface.ts";
 import { SlackChannel, type SlackChannelOptions } from "./index.ts";
 
 // Capture the message handler registered via app.message()
@@ -63,10 +62,6 @@ const OPTIONS: SlackChannelOptions = {
   requireMention: false,
   echo: false,
 };
-
-function frame(events: SceneEvent[]): Frame {
-  return { snapshot: {} as Frame["snapshot"] /* unused */, events };
-}
 
 describe("SlackChannel", () => {
   let channel: SlackChannel;
