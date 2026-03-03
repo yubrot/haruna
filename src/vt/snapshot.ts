@@ -278,6 +278,50 @@ export function richTextToPlainText(rt: RichText): string {
 }
 
 /**
+ * Convert a {@link RichText} value to Markdown, preserving bold, italic,
+ * and strikethrough styling.
+ *
+ * Style mappings: `b` → `**`, `i` → `*`, `s` → `~~`.
+ * Other SGR attributes (dim, underline, inverse, overline) are ignored.
+ *
+ * @param rt - The rich text to convert
+ * @returns Markdown-formatted string
+ */
+export function richTextToMarkdown(rt: RichText): string {
+  if (typeof rt === "string") return escapeMarkdown(rt);
+  let result = "";
+  for (const segment of rt) {
+    if (typeof segment === "string") {
+      result += escapeMarkdown(segment);
+    } else {
+      result += styledSegmentToMarkdown(segment);
+    }
+  }
+  return result;
+}
+
+/**
+ * Wrap a styled segment's text in Markdown formatting markers.
+ *
+ * Markers are applied without surrounding spaces, relying on
+ * intra-word formatting support (e.g. `word**bold**word`).
+ * Discord and GitHub support this; strict CommonMark does not.
+ */
+function styledSegmentToMarkdown(seg: StyledSegment): string {
+  let text = escapeMarkdown(seg.t);
+  if (!text) return "";
+  if (seg.s) text = `~~${text}~~`;
+  if (seg.i) text = `*${text}*`;
+  if (seg.b) text = `**${text}**`;
+  return text;
+}
+
+/** Escape Markdown metacharacters with backslashes for safe embedding in Markdown text. */
+function escapeMarkdown(text: string): string {
+  return text.replace(/[\\`*_~|>]/g, "\\$&");
+}
+
+/**
  * Compare two {@link RichSegment} values for equality.
  *
  * @param a - First segment

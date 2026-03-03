@@ -10,7 +10,8 @@ import { parseSceneInput, type SceneInput } from "../../scene/interface.ts";
 import { SequentialQueue } from "../../util/async.ts";
 import { Scheduler } from "../../util/scheduler.ts";
 import type { Channel, Frame, SendSceneInput } from "../interface.ts";
-import { applySceneEvent, emptyPostState, type PendingOp, type PostState } from "./state.ts";
+import { applySceneEvent, emptyPostState, type PendingOp, type PostState } from "../post-state.ts";
+import { type SlackMessage, slackFormatter } from "./formatting.ts";
 
 /** Maps Slack number-word emoji names to their numeric values (1–9). */
 const emojiToNumber: Record<string, number> = {
@@ -64,7 +65,7 @@ export class SlackChannel implements Channel {
   private send: SendSceneInput | null = null;
 
   /** Pure output state (lastPost + pending ops). */
-  private state: PostState = emptyPostState;
+  private state: PostState<SlackMessage> = emptyPostState<SlackMessage>();
   /** Slack message `ts` of the most recently posted message (set after API success). */
   private currentTs: string | null = null;
   private readonly scheduler: Scheduler;
@@ -207,7 +208,7 @@ export class SlackChannel implements Channel {
     await this.app?.stop();
     this.app = null;
     this.send = null;
-    this.state = emptyPostState;
+    this.state = emptyPostState<SlackMessage>();
     this.currentTs = null;
     this.botUserId = null;
   }
@@ -230,7 +231,7 @@ export class SlackChannel implements Channel {
    */
   receive(frame: Frame): void {
     for (const event of frame.events) {
-      this.state = applySceneEvent(this.state, event, this.options.echo);
+      this.state = applySceneEvent(this.state, event, this.options.echo, slackFormatter);
     }
     if (this.state.pendingOps.length > 0) this.scheduler.schedule();
   }
@@ -254,7 +255,7 @@ export class SlackChannel implements Channel {
    *
    * @param op - The operation to execute
    */
-  private async executeOp(op: PendingOp): Promise<void> {
+  private async executeOp(op: PendingOp<SlackMessage>): Promise<void> {
     const client = this.app?.client;
     if (!client) return;
 

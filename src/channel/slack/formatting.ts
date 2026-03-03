@@ -7,6 +7,15 @@
  */
 
 import { type RichText, richTextToPlainText, type StyledSegment } from "../../vt/snapshot.ts";
+import type { MessageFormatter } from "../post-state.ts";
+
+/** Slack implementation of the {@link MessageFormatter} interface. */
+export const slackFormatter: MessageFormatter<SlackMessage> = {
+  formatMessageContent,
+  formatQuestion,
+  formatPermissionRequired,
+  appendContext,
+};
 
 /** Leaf text element inside a rich_text container. */
 export interface SlackTextElement {

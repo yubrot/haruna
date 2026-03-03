@@ -2,7 +2,6 @@
 
 **Under Development**: Immediate tasks
 
-- [ ] Discord Channel
 - [ ] Configure trust mechanism
 
 Turn any CLI session into a live conversation.
@@ -99,7 +98,7 @@ channels:
 List of available channel types:
 
 - [`slack`](src/channel/slack/README.md) — Connects Slack
-- TODO: `discord`
+- [`discord`](src/channel/discord/README.md) — Connects Discord
 - [`web`](src/channel/web/README.md) — HTTP server + WebSocket bridge. Serves a browser-based client and streams events via WebSocket
 - [`dump`](src/channel/dump/README.md) — Records binary snapshots to disk for scene development and debugging
 
