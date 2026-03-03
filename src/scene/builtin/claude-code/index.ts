@@ -146,16 +146,24 @@ class ClaudeCodeScene implements Scene {
     const prevState = this.ccState;
     const events: SceneEvent[] = [];
 
-    // Content processing — always performed once per frame
-    const content = processContentChunks(
-      snapshot,
-      this.contentStart,
-      this.lastContentChunk,
-      inputArea.upperSep,
-      events,
-    );
-    this.contentStart = content.contentStart;
-    this.lastContentChunk = content.lastContentChunk;
+    // Content processing — skip during interactive persistence to avoid
+    // emitting message events while a permission/question prompt is active.
+    const isInteractivePersistence =
+      prevState.type === "idle" &&
+      prevState.inputState !== "free" &&
+      inputArea.body.kind === prevState.inputState;
+
+    if (!isInteractivePersistence) {
+      const content = processContentChunks(
+        snapshot,
+        this.contentStart,
+        this.lastContentChunk,
+        inputArea.upperSep,
+        events,
+      );
+      this.contentStart = content.contentStart;
+      this.lastContentChunk = content.lastContentChunk;
+    }
 
     if (inputArea.body.kind === "permission") {
       this.emitPermissionTransition(inputArea.body, prevState, events);

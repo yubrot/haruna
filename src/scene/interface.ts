@@ -190,7 +190,14 @@ export interface InputChanged {
   text: string;
 }
 
-/** A new question appeared in the scene. */
+/**
+ * A new question appeared in the scene.
+ *
+ * **Convention:** After this event, scenes must not emit {@link MessageCreated}
+ * or {@link LastMessageUpdated} until the question is resolved.
+ * {@link LastQuestionUpdated} may still be emitted. If a message event is
+ * emitted, consumers may treat it as implicit cancellation.
+ */
 export interface QuestionCreated {
   type: "question_created";
   /** The question text. */
@@ -212,7 +219,13 @@ export interface LastQuestionUpdated {
   selected?: number;
 }
 
-/** A tool-execution permission prompt appeared (immutable once emitted). */
+/**
+ * A tool-execution permission prompt appeared (immutable once emitted).
+ *
+ * **Convention:** After this event, scenes must not emit {@link MessageCreated}
+ * or {@link LastMessageUpdated} until the prompt is resolved. If a message
+ * event is emitted, consumers may treat it as implicit cancellation.
+ */
 export interface PermissionRequired {
   type: "permission_required";
   /** The command or tool name requesting permission. */
