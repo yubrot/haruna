@@ -7,6 +7,7 @@
 
 import { resolve } from "node:path";
 import type { ChannelEntry } from "../config.ts";
+import { DiscordChannel } from "./discord/index.ts";
 import { DumpChannel } from "./dump/index.ts";
 import type { Channel } from "./interface.ts";
 import { SlackChannel } from "./slack/index.ts";
@@ -54,6 +55,10 @@ export function loadChannels(entries: ChannelEntry[], config: ChannelConfig): Ch
         if (config._mode === "replay") break;
         const filePath = entry.path ?? resolve(entry.dir ?? ".haruna-dump", `${Date.now()}.dump`);
         channels.push(new DumpChannel({ filePath, command: config._command }));
+        break;
+      }
+      case "discord": {
+        channels.push(new DiscordChannel(entry));
         break;
       }
       case "slack": {

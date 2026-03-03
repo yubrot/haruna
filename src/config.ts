@@ -44,6 +44,33 @@ const ConfigSchema = v.object({
             path: v.optional(v.string()),
           }),
           v.object({
+            type: v.literal("discord"),
+            token: v.optional(
+              v.pipe(
+                v.string(),
+                v.minLength(1, "token is required (set in config or $DISCORD_TOKEN)"),
+              ),
+              () => process.env.DISCORD_TOKEN ?? "",
+            ),
+            channel: v.optional(
+              v.pipe(
+                v.string(),
+                v.minLength(1, "channel is required (set in config or $DISCORD_CHANNEL)"),
+              ),
+              () => process.env.DISCORD_CHANNEL ?? "",
+            ),
+            allowUsers: v.optional(
+              v.pipe(
+                v.union([v.string(), v.array(v.string())]),
+                v.transform((val) => (Array.isArray(val) ? val : [val])),
+              ),
+              () => ["*"],
+            ),
+            allowOtherBots: v.optional(v.boolean(), false),
+            requireMention: v.optional(v.boolean(), false),
+            echo: v.optional(v.boolean(), false),
+          }),
+          v.object({
             type: v.literal("slack"),
             appToken: v.optional(
               v.pipe(
