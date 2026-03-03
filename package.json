@@ -8,6 +8,7 @@
   "scripts": {
     "test": "bun test",
     "check": "biome check --write . && tsc --noEmit",
+    "check:ci": "biome check . && tsc --noEmit",
     "haruna": "bun run src/cli/index.ts",
     "build": "bun build src/cli/index.ts --compile --outfile out/haruna",
     "install": "bun run build && mkdir -p ~/.local/bin && mv out/haruna ~/.local/bin"
