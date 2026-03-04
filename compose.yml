@@ -1,0 +1,34 @@
+# Containerized development environment for running Claude Code in a sandbox.
+# The host project directory is bind-mounted and paths are aligned so that
+# Claude Code operates as if it were running directly on the host.
+services:
+  default:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    # Match the host's working directory so that Claude Code sees the same
+    # absolute paths inside the container as on the host.
+    working_dir: ${PWD}
+    stdin_open: true
+    tty: true
+    environment:
+      - ANTHROPIC_API_KEY
+      - HOST_HOME=${HOME}
+    volumes:
+      - ${HOME}/.claude:${HOME}/.claude
+      - ${HOME}/.claude.json:${HOME}/.claude.json
+      - .:${PWD}
+      - node-modules-cache:${PWD}/node_modules
+      - user-local-cache:/home/haruna/.local
+
+  isolated:
+    extends:
+      service: default
+    volumes:
+      - .:${PWD}
+      - node-modules-cache:${PWD}/node_modules
+      - user-local-cache:/home/haruna/.local
+
+volumes:
+  node-modules-cache:
+  user-local-cache:

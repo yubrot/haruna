@@ -1,9 +1,22 @@
 [tools]
 bun = "latest"
 
-[tasks]
-test = 'bun test'
-check = 'bun run check'
-haruna = 'bun run haruna'
-build = 'bun run build'
-install = 'bun run install'
+[tasks.sandbox]
+description = "Run a command in the Docker sandbox"
+run = "docker compose run --rm default"
+quiet = true
+
+[tasks."sandbox:isolated"]
+description = "Run a command in the Docker sandbox without ~/.claude mount"
+run = "docker compose run --rm isolated"
+quiet = true
+
+[tasks.claude]
+description = "Run Claude Code in the Docker sandbox"
+run = "mise run sandbox claude --dangerously-skip-permissions"
+quiet = true
+
+[tasks."claude:isolated"]
+description = "Run Claude Code in the Docker sandbox without ~/.claude mount"
+run = "mise run sandbox:isolated claude --dangerously-skip-permissions"
+quiet = true

@@ -1,0 +1,9 @@
+.git/
+node_modules/
+out/
+dist/
+*.tgz
+coverage/
+.haruna-dump/
+.haruna.yml
+.haruna.yaml

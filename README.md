@@ -171,6 +171,12 @@ bun run install          # build + install to ~/.local/bin
 Produces a single-file executable. No Bun runtime required on the target
 machine.
 
+## Sandbox
+
+A Docker-based sandbox is provided for running commands (e.g. Claude Code) in
+an isolated container while keeping the same directory layout as the host.
+See [mise.toml](./mise.toml) or `mise tasks` for details.
+
 ## How-to
 
 ### Create a new Scene
