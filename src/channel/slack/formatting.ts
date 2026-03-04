@@ -201,18 +201,15 @@ function richTextBlock(containers: SlackRichTextContainer[]): SlackBlock {
 /**
  * Format message content into a {@link SlackMessage}.
  *
- * @param style - `"text"` for a rich_text_section, `"block"` for rich_text_preformatted
  * @param content - Rich text lines to render
+ * @param echo - Whether this message is an echo of user input
  * @returns Slack message payload, or `null` when content is empty
  */
-export function formatMessageContent(
-  style: "text" | "block",
-  content: RichText[],
-): SlackMessage | null {
+export function formatMessageContent(content: RichText[], echo: boolean): SlackMessage | null {
   const plain = content.map(richTextToPlainText).join("\n");
   if (!plain) return null;
 
-  if (style === "block") {
+  if (echo || content.length > 1) {
     const elements = richTextToSlackElements(content);
     // rich_text_preformatted only supports SlackTextElement (not emoji)
     const textElements = elements.filter((el): el is SlackTextElement => el.type === "text");

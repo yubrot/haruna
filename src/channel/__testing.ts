@@ -42,9 +42,7 @@ export function frame(events: (string | SceneEvent)[] = []): Frame {
   return {
     snapshot: snapshot(["hello"]),
     events: events.map((e) =>
-      typeof e === "string"
-        ? ({ type: "message_created", style: "text", content: [e] } as const)
-        : e,
+      typeof e === "string" ? ({ type: "message_created", content: [e] } as const) : e,
     ),
   };
 }

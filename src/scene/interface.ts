@@ -162,8 +162,6 @@ export interface IndicatorChanged {
 /** A new message appeared in the scene. */
 export interface MessageCreated {
   type: "message_created";
-  /** Visual style of the message. */
-  style: "text" | "block";
   /** Lines of rich text content. */
   content: RichText[];
   /** When `true`, this message is an echo of user input. */
@@ -173,8 +171,6 @@ export interface MessageCreated {
 /** The last (most recent) message's content changed. */
 export interface LastMessageUpdated {
   type: "last_message_updated";
-  /** Visual style of the message. */
-  style: "text" | "block";
   /** Updated lines of rich text content, or `null` when the message was deleted. */
   content: RichText[] | null;
   /** When `true`, this message is an echo of user input. */

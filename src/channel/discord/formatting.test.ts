@@ -7,49 +7,50 @@ import {
 } from "./formatting.ts";
 
 describe("formatMessageContent", () => {
-  test("formats plain text as Markdown", () => {
-    const result = formatMessageContent("text", ["hello world"]);
+  test("formats single-line non-echo content as Markdown text", () => {
+    const result = formatMessageContent(["hello world"], false);
     expect(result).toBe("hello world");
   });
 
-  test("formats multi-line text with newlines", () => {
-    const result = formatMessageContent("text", ["line 1", "line 2"]);
-    expect(result).toBe("line 1\nline 2");
-  });
-
-  test("preserves rich text styles as Markdown", () => {
-    const result = formatMessageContent("text", [
-      [{ t: "bold", b: true }, " and ", { t: "italic", i: true }],
-    ]);
-    expect(result).toBe("**bold** and *italic*");
-  });
-
-  test("formats block style as code block", () => {
-    const result = formatMessageContent("block", ["code here"]);
-    expect(result).toBe("```\ncode here\n```");
-  });
-
-  test("formats multi-line block", () => {
-    const result = formatMessageContent("block", ["line 1", "line 2"]);
+  test("formats multi-line content as code block", () => {
+    const result = formatMessageContent(["line 1", "line 2"], false);
     expect(result).toBe("```\nline 1\nline 2\n```");
   });
 
-  test("block style strips rich text styles", () => {
-    const result = formatMessageContent("block", [[{ t: "bold", b: true }, " plain"]]);
+  test("preserves rich text styles for single-line non-echo content", () => {
+    const result = formatMessageContent(
+      [[{ t: "bold", b: true }, " and ", { t: "italic", i: true }]],
+      false,
+    );
+    expect(result).toBe("**bold** and *italic*");
+  });
+
+  test("formats echo content as code block", () => {
+    const result = formatMessageContent(["code here"], true);
+    expect(result).toBe("```\ncode here\n```");
+  });
+
+  test("formats multi-line echo content as code block", () => {
+    const result = formatMessageContent(["line 1", "line 2"], true);
+    expect(result).toBe("```\nline 1\nline 2\n```");
+  });
+
+  test("echo strips rich text styles in code block", () => {
+    const result = formatMessageContent([[{ t: "bold", b: true }, " plain"]], true);
     expect(result).toBe("```\nbold plain\n```");
   });
 
   test("returns null for empty content", () => {
-    expect(formatMessageContent("text", [""])).toBeNull();
+    expect(formatMessageContent([""], false)).toBeNull();
   });
 
-  test("returns null for empty block content", () => {
-    expect(formatMessageContent("block", [""])).toBeNull();
+  test("returns null for empty echo content", () => {
+    expect(formatMessageContent([""], true)).toBeNull();
   });
 
   test("truncates text exceeding 2000 character limit", () => {
     const longText = "x".repeat(3000);
-    const result = formatMessageContent("text", [longText]);
+    const result = formatMessageContent([longText], false);
     expect(result).not.toBeNull();
     expect(result?.length).toBeLessThanOrEqual(2000);
     expect(result?.endsWith("…")).toBe(true);
@@ -57,7 +58,7 @@ describe("formatMessageContent", () => {
 
   test("truncates block exceeding 2000 character limit with closing fence preserved", () => {
     const longText = "x".repeat(3000);
-    const result = formatMessageContent("block", [longText]);
+    const result = formatMessageContent([longText], true);
     expect(result).not.toBeNull();
     expect(result?.length).toBeLessThanOrEqual(2000);
     expect(result?.endsWith("\n```")).toBe(true);
@@ -65,12 +66,12 @@ describe("formatMessageContent", () => {
   });
 
   test("escapes triple backticks inside code blocks with zero-width space", () => {
-    const result = formatMessageContent("block", ["before ``` after"]);
+    const result = formatMessageContent(["before ``` after"], true);
     expect(result).toBe("```\nbefore `\u200B`` after\n```");
   });
 
   test("escapes multiple triple backticks inside code blocks", () => {
-    const result = formatMessageContent("block", ["a ``` b ``` c"]);
+    const result = formatMessageContent(["a ``` b ``` c"], true);
     expect(result).toBe("```\na `\u200B`` b `\u200B`` c\n```");
   });
 });

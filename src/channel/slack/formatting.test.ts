@@ -61,8 +61,8 @@ describe("richTextToSlackElements", () => {
 });
 
 describe("formatMessageContent", () => {
-  test("formats single-line text as rich_text section", () => {
-    const result = formatMessageContent("text", ["hello world"]);
+  test("formats single-line non-echo content as rich_text section", () => {
+    const result = formatMessageContent(["hello world"], false);
     expect(result).toEqual({
       blocks: [
         {
@@ -79,15 +79,15 @@ describe("formatMessageContent", () => {
     });
   });
 
-  test("formats multi-line text as rich_text section", () => {
-    const result = formatMessageContent("text", ["line 1", "line 2"]);
+  test("formats multi-line content as rich_text preformatted", () => {
+    const result = formatMessageContent(["line 1", "line 2"], false);
     expect(result).toMatchObject({
       blocks: [
         {
           type: "rich_text",
           elements: [
             {
-              type: "rich_text_section",
+              type: "rich_text_preformatted",
               elements: [
                 { type: "text", text: "line 1" },
                 { type: "text", text: "\n" },
@@ -101,8 +101,8 @@ describe("formatMessageContent", () => {
     });
   });
 
-  test("formats block style as rich_text preformatted", () => {
-    const result = formatMessageContent("block", ["code here"]);
+  test("formats echo content as rich_text preformatted", () => {
+    const result = formatMessageContent(["code here"], true);
     expect(result).toMatchObject({
       blocks: [
         {
@@ -118,8 +118,8 @@ describe("formatMessageContent", () => {
     });
   });
 
-  test("preserves rich text segment styles", () => {
-    const result = formatMessageContent("text", [[{ t: "bold", b: true }, " plain"]]);
+  test("preserves rich text segment styles for single-line non-echo content", () => {
+    const result = formatMessageContent([[{ t: "bold", b: true }, " plain"]], false);
     expect(result).toMatchObject({
       blocks: [
         {
@@ -140,12 +140,12 @@ describe("formatMessageContent", () => {
   });
 
   test("returns null for empty content", () => {
-    expect(formatMessageContent("text", [""])).toBeNull();
+    expect(formatMessageContent([""], false)).toBeNull();
   });
 
   test("truncates text exceeding character limit", () => {
     const longText = `${"x".repeat(4000)}\nsecond line`;
-    const result = formatMessageContent("text", [longText]);
+    const result = formatMessageContent([longText], false);
     const block = result?.blocks[0];
     expect(block).toMatchObject({ type: "rich_text" });
     if (block?.type === "rich_text") {
@@ -161,9 +161,9 @@ describe("formatMessageContent", () => {
     }
   });
 
-  test("truncates block style message exceeding character limit", () => {
+  test("truncates echo message exceeding character limit", () => {
     const longText = "x".repeat(4000);
-    const result = formatMessageContent("block", [longText]);
+    const result = formatMessageContent([longText], true);
     const block = result?.blocks[0];
     expect(block).toMatchObject({ type: "rich_text" });
     if (block?.type === "rich_text") {

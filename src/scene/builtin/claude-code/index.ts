@@ -261,7 +261,7 @@ class ClaudeCodeScene implements Scene {
     }
     // Emit plan content as a block message
     if (body.planContent.length > 0) {
-      events.push({ type: "message_created", style: "block", content: body.planContent });
+      events.push({ type: "message_created", content: body.planContent });
     }
     // Emit question for plan review options
     events.push({

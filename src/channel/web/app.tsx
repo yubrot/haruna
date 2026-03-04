@@ -29,7 +29,6 @@ type DisplayItem = MessageItem | QuestionItem | PermissionItem;
 
 interface MessageItem {
   type: "message";
-  style: "text" | "block";
   content: RichText[];
 }
 
@@ -84,7 +83,6 @@ function applyEvent(state: InteractiveState, event: SceneEvent): InteractiveStat
           ...state.items,
           {
             type: "message",
-            style: event.style,
             content: event.content,
           },
         ],
@@ -97,7 +95,6 @@ function applyEvent(state: InteractiveState, event: SceneEvent): InteractiveStat
             ? null
             : {
                 ...item,
-                style: event.style,
                 content: event.content,
               },
         ),
@@ -467,8 +464,9 @@ function DisplayItemView({
   onOptionClick: (label: string) => void;
 }): JSX.Element | null {
   if (item.type === "message") {
+    const style = item.content.length > 1 ? "block" : "text";
     return (
-      <div class={`message ${item.style}`}>
+      <div class={`message ${style}`}>
         {item.content.map((rt, i) => (
           <div key={i} dangerouslySetInnerHTML={{ __html: richTextToHtml(rt) }} />
         ))}

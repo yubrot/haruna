@@ -18,7 +18,7 @@ function msg(text: string): Msg {
 
 /** Minimal formatter that wraps content into Msg. */
 const fmt: MessageFormatter<Msg> = {
-  formatMessageContent(_style, content) {
+  formatMessageContent(content, _echo) {
     const text = content.map((l) => (typeof l === "string" ? l : "")).join("\n");
     if (!text) return null;
     return msg(text);
@@ -99,12 +99,7 @@ describe("applySceneEvent", () => {
   });
 
   test("message_created skips events that format to null", () => {
-    const state = applySceneEvent(
-      empty,
-      { type: "message_created", style: "text", content: [""] },
-      false,
-      fmt,
-    );
+    const state = applySceneEvent(empty, { type: "message_created", content: [""] }, false, fmt);
     expect(state.pendingOps).toHaveLength(0);
     expect(state.lastPost).toBeNull();
   });
@@ -112,7 +107,7 @@ describe("applySceneEvent", () => {
   test("message_created skips echo events when echo is false", () => {
     const state = applySceneEvent(
       empty,
-      { type: "message_created", style: "text", content: ["echoed"], echo: true },
+      { type: "message_created", content: ["echoed"], echo: true },
       false,
       fmt,
     );
@@ -122,7 +117,7 @@ describe("applySceneEvent", () => {
   test("message_created includes echo events when echo is true", () => {
     const state = applySceneEvent(
       empty,
-      { type: "message_created", style: "text", content: ["echoed"], echo: true },
+      { type: "message_created", content: ["echoed"], echo: true },
       true,
       fmt,
     );
@@ -152,7 +147,7 @@ describe("applySceneEvent", () => {
     };
     const state = applySceneEvent(
       initial,
-      { type: "last_message_updated", style: "text", content: ["updated"] },
+      { type: "last_message_updated", content: ["updated"] },
       false,
       fmt,
     );
@@ -167,7 +162,7 @@ describe("applySceneEvent", () => {
     };
     const state = applySceneEvent(
       initial,
-      { type: "last_message_updated", style: "text", content: null },
+      { type: "last_message_updated", content: null },
       false,
       fmt,
     );
@@ -179,7 +174,7 @@ describe("applySceneEvent", () => {
   test("last_message_updated without prior message is ignored", () => {
     const state = applySceneEvent(
       empty,
-      { type: "last_message_updated", style: "text", content: ["orphan"] },
+      { type: "last_message_updated", content: ["orphan"] },
       false,
       fmt,
     );
@@ -310,5 +305,5 @@ describe("applySceneEvent", () => {
 });
 
 function messageCreated(text: string): SceneEvent {
-  return { type: "message_created", style: "text", content: [text] };
+  return { type: "message_created", content: [text] };
 }

@@ -1,12 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
 import {
-  block,
+  message,
+  messageContaining,
+  messageMatching,
   simplifyTraceContent,
   type TraceEntry,
-  text,
-  textContaining,
-  textMatching,
   traceScene,
 } from "../../__testing.ts";
 import shellScene from "./index.ts";
@@ -40,8 +39,8 @@ describe("Shell Scene", () => {
       {
         events: [
           inputOff,
-          block("$ echo hello"),
-          text("hello"),
+          message("$ echo hello"),
+          message("hello"),
           { type: "input_changed", active: true, text: "" },
         ],
       },
@@ -56,24 +55,24 @@ describe("Shell Scene", () => {
       {
         events: [
           inputOff,
-          block("$ echo first"),
-          text("first"),
+          message("$ echo first"),
+          message("first"),
           { type: "input_changed", active: true, text: "" },
         ],
       },
       {
         events: [
           inputOff,
-          block("$ echo second"),
-          text("second"),
+          message("$ echo second"),
+          message("second"),
           { type: "input_changed", active: true, text: "" },
         ],
       },
       {
         events: [
           inputOff,
-          block("$ echo third"),
-          text("third"),
+          message("$ echo third"),
+          message("third"),
           { type: "input_changed", active: true, text: "" },
         ],
       },
@@ -88,8 +87,8 @@ describe("Shell Scene", () => {
       {
         events: [
           inputOff,
-          block("$ seq 1 20"),
-          text(
+          message("$ seq 1 20"),
+          message(
             "1",
             "2",
             "3",
@@ -123,7 +122,7 @@ describe("Shell Scene", () => {
     expect(trace).toMatchObject([
       { events: [{ type: "input_changed", active: true, text: "" }] },
       {
-        events: [inputOff, block("$"), { type: "input_changed", active: true, text: "" }],
+        events: [inputOff, message("$"), { type: "input_changed", active: true, text: "" }],
       },
     ]);
   });
@@ -136,11 +135,11 @@ describe("Shell Scene", () => {
       { events: [{ type: "input_changed", active: true, text: "" }] },
       // Snapshot 1: idle → running — output starts immediately
       {
-        events: [inputOff, textContaining("50")],
+        events: [inputOff, messageContaining("50")],
       },
       // Snapshot 2: running → idle — remaining output + prompt
       {
-        events: [textContaining("100"), { type: "input_changed", active: true, text: "" }],
+        events: [messageContaining("100"), { type: "input_changed", active: true, text: "" }],
       },
     ]);
   });
@@ -157,14 +156,14 @@ describe("Shell Scene", () => {
       {
         events: [
           inputOff,
-          block("$ cat << 'EOF'"),
-          text("> line one", "> line two", "> line three"),
+          message("$ cat << 'EOF'"),
+          message("> line one", "> line two", "> line three"),
         ],
       },
       // Snapshot 2: running → idle — held-back "> EOF" + cat output + prompt
       {
         events: [
-          text("> EOF", "line one", "line two", "line three"),
+          message("> EOF", "line one", "line two", "line three"),
           { type: "input_changed", active: true, text: "" },
         ],
       },
@@ -197,8 +196,8 @@ describe("Shell Scene", () => {
         firm: true,
         events: [
           inputOff,
-          block("$ seq 1 100 | less && echo after-pager"),
-          text("after-pager"),
+          message("$ seq 1 100 | less && echo after-pager"),
+          message("after-pager"),
           { type: "input_changed", active: true, text: "" },
         ],
       },
@@ -213,8 +212,8 @@ describe("Shell Scene", () => {
       {
         events: [
           inputOff,
-          { type: "message_created", style: "block" },
-          text("first", "", "third", "", "", "sixth"),
+          { type: "message_created" },
+          message("first", "", "third", "", "", "sixth"),
           { type: "input_changed", active: true, text: "" },
         ],
       },
@@ -229,8 +228,8 @@ describe("Shell Scene", () => {
       {
         events: [
           inputOff,
-          { type: "message_created", style: "block" },
-          textMatching(/Line 200/),
+          { type: "message_created" },
+          messageMatching(/Line 200/),
           { type: "input_changed", active: true, text: "" },
         ],
       },
@@ -247,8 +246,8 @@ describe("Shell Scene", () => {
       {
         events: [
           inputOff,
-          block("[haruna]$ echo hello"),
-          text("hello"),
+          message("[haruna]$ echo hello"),
+          message("hello"),
           { type: "input_changed", active: true, text: "" },
         ],
       },
@@ -274,16 +273,16 @@ describe("Shell Scene", () => {
       {
         events: [
           inputOff,
-          block("[haruna]", "$ echo hello"),
-          text("hello"),
+          message("[haruna]", "$ echo hello"),
+          message("hello"),
           { type: "input_changed", active: true, text: "" },
         ],
       },
       {
         events: [
           inputOff,
-          block("[haruna]", "$ echo world"),
-          text("world"),
+          message("[haruna]", "$ echo world"),
+          message("world"),
           { type: "input_changed", active: true, text: "" },
         ],
       },
@@ -300,16 +299,16 @@ describe("Shell Scene", () => {
       {
         events: [
           inputOff,
-          block("$ echo hello"),
-          text("hello", "[haruna]"),
+          message("$ echo hello"),
+          message("hello", "[haruna]"),
           { type: "input_changed", active: true, text: "" },
         ],
       },
       {
         events: [
           inputOff,
-          block("$ echo world"),
-          text("world", "[haruna]"),
+          message("$ echo world"),
+          message("world", "[haruna]"),
           { type: "input_changed", active: true, text: "" },
         ],
       },
@@ -324,19 +323,23 @@ describe("Shell Scene", () => {
       { events: [{ type: "input_changed", active: true, text: "" }] },
       // Snapshot 1: idle → idle (virtual running) — first command output
       {
-        events: [inputOff, { style: "text" }, { type: "input_changed", active: true, text: "" }],
+        events: [
+          inputOff,
+          { type: "message_created" },
+          { type: "input_changed", active: true, text: "" },
+        ],
       },
       // Snapshot 2: idle → running — second command starts, output begins immediately
       {
         events: [
           inputOff,
-          block("$ for i in $(seq 1 50); do echo A$i; sleep 0.02; done"),
-          textContaining("A1"),
+          message("$ for i in $(seq 1 50); do echo A$i; sleep 0.02; done"),
+          messageContaining("A1"),
         ],
       },
       // Snapshot 3: running → idle — remaining output
       {
-        events: [{ style: "text" }, { type: "input_changed", active: true, text: "" }],
+        events: [{ type: "message_created" }, { type: "input_changed", active: true, text: "" }],
       },
     ]);
   });
@@ -351,13 +354,13 @@ describe("Shell Scene", () => {
       { events: [{ type: "input_changed", active: true, text: "" }] },
       // Snapshot 1: idle → running — prompt block only (progress cursor line held back)
       {
-        events: [inputOff, { style: "block" }],
+        events: [inputOff, { type: "message_created" }],
       },
       // Snapshot 2: running — no events (cursor line still held back)
       { events: [] },
       // Snapshot 3: running → idle — final progress value emitted + prompt
       {
-        events: [text("progress: 5/5"), { type: "input_changed", active: true, text: "" }],
+        events: [message("progress: 5/5"), { type: "input_changed", active: true, text: "" }],
       },
     ]);
   });
@@ -446,7 +449,7 @@ describe("Shell Scene", () => {
           state: "shell(idle)",
           events: [
             inputOff,
-            block("$ cat fixtures/shell/files/completion/foo1.txt"),
+            message("$ cat fixtures/shell/files/completion/foo1.txt"),
             { type: "input_changed", active: true, text: "" },
           ],
         },

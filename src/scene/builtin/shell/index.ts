@@ -115,7 +115,6 @@ class ShellScene implements Scene {
       if (this.shellState.promptStart >= snapshot.linesOffset) {
         events.push({
           type: "message_created",
-          style: "block",
           content: collectLines(
             snapshot,
             this.shellState.promptStart,
@@ -151,7 +150,6 @@ class ShellScene implements Scene {
     if (this.shellState.emittedUpTo < boundary) {
       events.push({
         type: "message_created",
-        style: "text",
         content: collectLines(snapshot, this.shellState.emittedUpTo, boundary),
       });
 

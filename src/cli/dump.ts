@@ -195,7 +195,6 @@ function formatSceneEvent(event: SceneEvent): string {
     case "message_created":
     case "last_message_updated": {
       const flags: string[] = [];
-      if (event.style !== "text") flags.push(event.style);
       if (event.echo) flags.push("echo");
       const content = event.content;
       if (content === null) {

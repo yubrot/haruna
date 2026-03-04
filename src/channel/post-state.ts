@@ -57,11 +57,15 @@ export interface MessageFormatter<M> {
   /**
    * Format message content into a platform message.
    *
-   * @param style - `"text"` for styled text, `"block"` for code block
+   * The formatter derives the visual style from the content:
+   * - `echo` or multi-line content (`content.length > 1`) → block (code block / preformatted)
+   * - Single-line content → text (styled text)
+   *
    * @param content - Rich text lines to render
+   * @param echo - Whether this message is an echo of user input
    * @returns Platform message, or `null` when content is empty
    */
-  formatMessageContent(style: "text" | "block", content: RichText[]): M | null;
+  formatMessageContent(content: RichText[], echo: boolean): M | null;
 
   /**
    * Format a question event into a platform message.
@@ -174,7 +178,7 @@ function applyMessageCreated<M>(
   event: SceneEvent & { type: "message_created" },
   fmt: MessageFormatter<M>,
 ): PostState<M> {
-  const message = fmt.formatMessageContent(event.style, event.content);
+  const message = fmt.formatMessageContent(event.content, event.echo === true);
   if (!message) return state;
 
   let ops = state.pendingOps;
@@ -203,7 +207,7 @@ function applyLastMessageUpdated<M>(
     };
   }
 
-  const message = fmt.formatMessageContent(event.style, event.content);
+  const message = fmt.formatMessageContent(event.content, event.echo === true);
   if (!message) return state;
   if (state.lastPost?.type !== "message") return state;
 

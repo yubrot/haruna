@@ -119,7 +119,7 @@ describe("DiscordChannel", () => {
     });
     await channel.start(send);
 
-    channel.receive(frame([{ type: "message_created", style: "text", content: ["hello"] }]));
+    channel.receive(frame([{ type: "message_created", content: ["hello"] }]));
     await channel.stop();
 
     expect(mockSend).toHaveBeenCalledTimes(1);
@@ -145,8 +145,8 @@ describe("DiscordChannel", () => {
     });
     await channel.start(send);
 
-    channel.receive(frame([{ type: "message_created", style: "text", content: ["first"] }]));
-    channel.receive(frame([{ type: "last_message_updated", style: "text", content: ["updated"] }]));
+    channel.receive(frame([{ type: "message_created", content: ["first"] }]));
+    channel.receive(frame([{ type: "last_message_updated", content: ["updated"] }]));
     await channel.stop();
 
     expect(mockSend).toHaveBeenCalledTimes(1);
@@ -161,8 +161,8 @@ describe("DiscordChannel", () => {
     });
     await channel.start(send);
 
-    channel.receive(frame([{ type: "message_created", style: "text", content: ["first"] }]));
-    channel.receive(frame([{ type: "last_message_updated", style: "text", content: null }]));
+    channel.receive(frame([{ type: "message_created", content: ["first"] }]));
+    channel.receive(frame([{ type: "last_message_updated", content: null }]));
     await channel.stop();
 
     expect(mockDelete).toHaveBeenCalledTimes(1);
@@ -175,7 +175,7 @@ describe("DiscordChannel", () => {
     });
     await channel.start(send);
 
-    channel.receive(frame([{ type: "message_created", style: "text", content: ["hello"] }]));
+    channel.receive(frame([{ type: "message_created", content: ["hello"] }]));
     channel.receive(frame([{ type: "indicator_changed", active: true, text: "Thinking..." }]));
     await channel.stop();
 
@@ -190,7 +190,7 @@ describe("DiscordChannel", () => {
     });
     await channel.start(send);
 
-    channel.receive(frame([{ type: "message_created", style: "text", content: ["hello"] }]));
+    channel.receive(frame([{ type: "message_created", content: ["hello"] }]));
     channel.receive(frame([{ type: "indicator_changed", active: true, text: "Thinking..." }]));
     channel.receive(frame([{ type: "indicator_changed", active: false, text: "" }]));
     await channel.stop();
@@ -207,9 +207,9 @@ describe("DiscordChannel", () => {
     });
     await channel.start(send);
 
-    channel.receive(frame([{ type: "message_created", style: "text", content: ["first"] }]));
+    channel.receive(frame([{ type: "message_created", content: ["first"] }]));
     channel.receive(frame([{ type: "indicator_changed", active: true, text: "Thinking..." }]));
-    channel.receive(frame([{ type: "message_created", style: "text", content: ["second"] }]));
+    channel.receive(frame([{ type: "message_created", content: ["second"] }]));
     await channel.stop();
 
     expect(mockSend).toHaveBeenCalledTimes(2);
@@ -223,9 +223,9 @@ describe("DiscordChannel", () => {
     });
     await channel.start(send);
 
-    channel.receive(frame([{ type: "message_created", style: "text", content: ["first"] }]));
+    channel.receive(frame([{ type: "message_created", content: ["first"] }]));
     channel.receive(frame([{ type: "indicator_changed", active: true, text: "Thinking..." }]));
-    channel.receive(frame([{ type: "message_created", style: "text", content: ["second"] }]));
+    channel.receive(frame([{ type: "message_created", content: ["second"] }]));
     await channel.stop();
 
     // The indicator activate + strip-indicator updates coalesce into one
@@ -275,9 +275,7 @@ describe("DiscordChannel", () => {
     });
     await channel.start(send);
 
-    channel.receive(
-      frame([{ type: "message_created", style: "text", content: ["echoed"], echo: true }]),
-    );
+    channel.receive(frame([{ type: "message_created", content: ["echoed"], echo: true }]));
 
     expect(mockSend).not.toHaveBeenCalled();
   });
@@ -290,9 +288,7 @@ describe("DiscordChannel", () => {
     });
     await ch.start(send);
 
-    ch.receive(
-      frame([{ type: "message_created", style: "text", content: ["echoed"], echo: true }]),
-    );
+    ch.receive(frame([{ type: "message_created", content: ["echoed"], echo: true }]));
     await ch.stop();
 
     expect(mockSend).toHaveBeenCalledTimes(1);
@@ -430,7 +426,7 @@ describe("DiscordChannel", () => {
     });
     await channel.start(send);
 
-    channel.receive(frame([{ type: "message_created", style: "text", content: ["hello"] }]));
+    channel.receive(frame([{ type: "message_created", content: ["hello"] }]));
 
     simulateMessage({
       system: false,
@@ -867,7 +863,7 @@ describe("DiscordChannel", () => {
     });
     await channel.start(send);
 
-    channel.receive(frame([{ type: "message_created", style: "text", content: ["hello"] }]));
+    channel.receive(frame([{ type: "message_created", content: ["hello"] }]));
     await waitFor(() => !channel.hasPending);
 
     simulateReaction(
@@ -941,8 +937,8 @@ describe("DiscordChannel", () => {
 
     mockSend.mockImplementationOnce(() => Promise.reject(new Error("rate_limited")));
 
-    channel.receive(frame([{ type: "message_created", style: "text", content: ["fail"] }]));
-    channel.receive(frame([{ type: "message_created", style: "text", content: ["ok"] }]));
+    channel.receive(frame([{ type: "message_created", content: ["fail"] }]));
+    channel.receive(frame([{ type: "message_created", content: ["ok"] }]));
     await channel.stop();
 
     // First post fails, second should still be attempted
@@ -956,7 +952,7 @@ describe("DiscordChannel", () => {
     });
     await channel.start(send);
 
-    channel.receive(frame([{ type: "message_created", style: "text", content: ["msg"] }]));
+    channel.receive(frame([{ type: "message_created", content: ["msg"] }]));
     channel.receive(frame([{ type: "indicator_changed", active: true, text: "Thinking..." }]));
     channel.receive(
       frame([

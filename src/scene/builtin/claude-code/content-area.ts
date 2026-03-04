@@ -74,7 +74,6 @@ export function processContentChunks(
     const content = collectLines(snapshot, chunk.startLine, chunk.endLine);
     const event: SceneEvent = {
       type: "message_created",
-      style: "block",
       content,
     };
     if (chunk.kind === "user") event.echo = true;
@@ -181,7 +180,6 @@ function recheckLastChunk(
   if (!richTextLinesEqual(prevStored.content, content)) {
     const event: SceneEvent = {
       type: "last_message_updated",
-      style: "block",
       content,
     };
     if (chunk.kind === "user") event.echo = true;

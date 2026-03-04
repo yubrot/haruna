@@ -60,8 +60,8 @@ const CONTENT_EVENT_TYPES = new Set(["message_created", "last_message_updated"])
  *
  * Converts `message_created` and `last_message_updated` events so that
  * their `content` fields become plain `string[]`, enabling direct
- * structural matching with helpers like {@link block}, {@link text},
- * {@link blockContaining}, and {@link textContaining}.
+ * structural matching with helpers like {@link message},
+ * {@link messageContaining}, and {@link messageMatching}.
  *
  * @param trace - Trace entries from {@link traceScene}
  * @returns A copy with plain-text message content
@@ -83,65 +83,32 @@ export function simplifyTraceContent(trace: TraceEntry[]): TraceEntry[] {
 // ---------------------------------------------------------------------------
 
 /**
- * Partial event object matching a "text"-style message with exact content.
+ * Partial event object matching a message with exact content.
  *
  * @param lines - Expected plain-text lines (exact, in order)
  */
-export function text(...lines: string[]) {
-  return { style: "text", content: lines };
+export function message(...lines: string[]) {
+  return { content: lines };
 }
 
 /**
- * Partial event object matching a "text"-style message that includes all
+ * Partial event object matching a message that includes all
  * the given lines (in any position).
  *
  * @param lines - Lines that must appear somewhere in the content
  */
-export function textContaining(...lines: string[]) {
-  return { style: "text", content: expect.arrayContaining(lines) };
+export function messageContaining(...lines: string[]) {
+  return { content: expect.arrayContaining(lines) };
 }
 
 /**
- * Partial event object matching a "text"-style message where at least one
+ * Partial event object matching a message where at least one
  * line matches the given regex.
  *
  * @param pattern - Regex to test against content lines
  */
-export function textMatching(pattern: RegExp) {
+export function messageMatching(pattern: RegExp) {
   return {
-    style: "text",
-    content: expect.arrayContaining([expect.stringMatching(pattern)]),
-  };
-}
-
-/**
- * Partial event object matching a "block"-style message with exact content.
- *
- * @param lines - Expected plain-text lines (exact, in order)
- */
-export function block(...lines: string[]) {
-  return { style: "block", content: lines };
-}
-
-/**
- * Partial event object matching a "block"-style message that includes all
- * the given lines (in any position).
- *
- * @param lines - Lines that must appear somewhere in the content
- */
-export function blockContaining(...lines: string[]) {
-  return { style: "block", content: expect.arrayContaining(lines) };
-}
-
-/**
- * Partial event object matching a "block"-style message where at least one
- * line matches the given regex.
- *
- * @param pattern - Regex to test against content lines
- */
-export function blockMatching(pattern: RegExp) {
-  return {
-    style: "block",
     content: expect.arrayContaining([expect.stringMatching(pattern)]),
   };
 }

@@ -22,7 +22,7 @@ interface Scene {
   readonly state: string | null; // diagnostic label (e.g. "shell(idle)")
   detect(snapshot): SceneEvent[] | null; // stateless initial check
   continue(snapshot): SceneContinuation | null; // stateful continuation
-  encodeInput?(input: SceneInput): string | null; // channel input → PTY bytes
+  encodeInput?(input: SceneInput): InputAction[] | InputAction | null; // channel input → PTY actions
 }
 
 interface SceneContinuation {
@@ -41,20 +41,21 @@ See `src/scene/interface.ts` for full definitions. The table below lists
 events emitted by individual scenes. `scene_state_changed` is managed by
 the CompositeScene orchestrator and should not be emitted by scenes directly.
 
-| Event                   | Key fields                                      | When to emit                             |
-| ----------------------- | ----------------------------------------------- | ---------------------------------------- |
-| `indicator_changed`     | `active`, `text`                                | Spinner/progress indicator state change  |
-| `message_created`       | `style: "text"\|"block"`, `content: RichText[]` | New output block appeared                |
-| `last_message_updated`  | `style`, `content: RichText[]\|null`            | Most recent message content changed      |
-| `input_changed`         | `active`, `text`                                | Input field appeared/changed/disappeared |
-| `question_created`      | `question`, `options`, `selected`               | Question prompt appeared                 |
-| `last_question_updated` | `question`, `options`, `selected`               | Question content changed                 |
-| `permission_required`   | `command`, `options`, `selected`                | Tool permission prompt appeared          |
+| Event                   | Key fields                         | When to emit                             |
+| ----------------------- | ---------------------------------- | ---------------------------------------- |
+| `indicator_changed`     | `active`, `text`                   | Spinner/progress indicator state change  |
+| `message_created`       | `content: RichText[]`, `echo?`     | New output block appeared                |
+| `last_message_updated`  | `content: RichText[]\|null`, `echo?` | Most recent message content changed      |
+| `input_changed`         | `active`, `text`                   | Input field appeared/changed/disappeared |
+| `question_created`      | `question`, `options`, `selected`  | Question prompt appeared                 |
+| `last_question_updated` | `question`, `options`, `selected`  | Question content changed                 |
+| `permission_required`   | `command`, `options`, `selected`   | Tool permission prompt appeared          |
 
-- `style: "block"` — like HTML `<pre>`, used for formatted texts
-- `style: "text"` — like HTML `<p>`, used for plain texts
 - `content` is `RichText[]` (one element per line). In tests,
   `simplifyTraceContent()` converts these to `string[]` for easier matching.
+- `echo: true` marks messages that are echoes of user input.
+- Channels derive visual style from content: `echo` or multi-line → block,
+  single-line → text.
 
 #### SceneConfig
 
@@ -289,11 +290,11 @@ export default (config: SceneConfig) => new MyScene(config);
 #### encodeInput Implementation
 
 `encodeInput()` is optional but enables bidirectional interaction from
-channels. It receives a `SceneInput` and returns raw PTY bytes (or `null`
+channels. It receives a `SceneInput` and returns `InputAction`(s) (or `null`
 to decline).
 
 ```typescript
-encodeInput(input: SceneInput): string | null {
+encodeInput(input: SceneInput): InputAction[] | InputAction | null {
   switch (input.type) {
     case "text":
       // Submit text as keystrokes + Enter
@@ -384,10 +385,9 @@ function richTextToPlainText(rt: RichText): string;
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
 import {
-  block,
+  message,
+  messageContaining,
   simplifyTraceContent,
-  text,
-  textContaining,
   type TraceEntry,
   traceScene,
 } from "../__testing.ts";
@@ -420,14 +420,11 @@ message events to `string[]`, enabling direct comparison with `text()` /
 
 From `src/scene/__testing.ts`:
 
-| Matcher                     | Asserts                                        |
-| --------------------------- | ---------------------------------------------- |
-| `text("line1", "line2")`    | `style: "text"`, exact content lines           |
-| `block("line1", "line2")`   | `style: "block"`, exact content lines          |
-| `textContaining("substr")`  | `style: "text"`, content includes given lines  |
-| `blockContaining("substr")` | `style: "block"`, content includes given lines |
-| `textMatching(/regex/)`     | `style: "text"`, at least one line matches     |
-| `blockMatching(/regex/)`    | `style: "block"`, at least one line matches    |
+| Matcher                          | Asserts                                   |
+| -------------------------------- | ----------------------------------------- |
+| `message("line1", "line2")`      | Exact content lines                       |
+| `messageContaining("substr")`    | Content includes given lines              |
+| `messageMatching(/regex/)`       | At least one line matches                 |
 
 #### Assertion Style
 
@@ -445,8 +442,8 @@ expect(trace).toMatchObject([
   {
     events: [
       { type: "input_changed", active: false, text: "" },
-      block("$ echo hello"),
-      text("hello"),
+      message("$ echo hello"),
+      message("hello"),
       { type: "input_changed", active: true, text: "" },
     ],
   },

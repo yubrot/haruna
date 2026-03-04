@@ -26,15 +26,12 @@ export const discordFormatter: MessageFormatter<DiscordMessage> = {
 /**
  * Format message content into a Discord Markdown string.
  *
- * @param style - `"text"` for Markdown-styled text, `"block"` for a code block
  * @param content - Rich text lines to render
+ * @param echo - Whether this message is an echo of user input
  * @returns Discord message string, or `null` when content is empty
  */
-export function formatMessageContent(
-  style: "text" | "block",
-  content: RichText[],
-): DiscordMessage | null {
-  if (style === "block") {
+export function formatMessageContent(content: RichText[], echo: boolean): DiscordMessage | null {
+  if (echo || content.length > 1) {
     const plain = content.map(richTextToPlainText).join("\n");
     if (!plain) return null;
     return codeBlock(plain);

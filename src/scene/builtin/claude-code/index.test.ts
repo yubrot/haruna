@@ -38,8 +38,8 @@ describe("Claude Code Scene", () => {
       {
         state: "claude-code(free)",
         events: [
-          { type: "message_created", style: "block" },
-          { type: "message_created", style: "block" },
+          { type: "message_created" },
+          { type: "message_created" },
           { type: "input_changed", active: true },
         ],
       },
@@ -57,9 +57,9 @@ describe("Claude Code Scene", () => {
       {
         state: "claude-code(free)",
         events: [
-          { type: "message_created", style: "block" },
-          { type: "message_created", style: "block" },
-          { type: "message_created", style: "block" },
+          { type: "message_created" },
+          { type: "message_created" },
+          { type: "message_created" },
           { type: "input_changed", active: true },
         ],
       },
@@ -77,7 +77,7 @@ describe("Claude Code Scene", () => {
       {
         state: "claude-code(question)",
         events: [
-          { type: "message_created", style: "block" },
+          { type: "message_created" },
           {
             type: "question_created",
             question: expect.stringContaining("option"),
@@ -98,9 +98,9 @@ describe("Claude Code Scene", () => {
       {
         state: "claude-code(free)",
         events: [
-          { type: "last_message_updated", style: "block" },
-          { type: "message_created", style: "block" },
-          { type: "message_created", style: "block" },
+          { type: "last_message_updated" },
+          { type: "message_created" },
+          { type: "message_created" },
         ],
       },
     ]);
@@ -119,7 +119,7 @@ describe("Claude Code Scene", () => {
       {
         state: "claude-code(question)",
         events: [
-          { type: "message_created", style: "block", echo: true },
+          { type: "message_created", echo: true },
           {
             type: "question_created",
             question: expect.stringContaining("color"),
@@ -163,9 +163,9 @@ describe("Claude Code Scene", () => {
       {
         state: "claude-code(free)",
         events: [
-          { type: "last_message_updated", style: "block", echo: true },
-          { type: "message_created", style: "block" },
-          { type: "message_created", style: "block" },
+          { type: "last_message_updated", echo: true },
+          { type: "message_created" },
+          { type: "message_created" },
         ],
       },
     ]);
@@ -182,17 +182,14 @@ describe("Claude Code Scene", () => {
       {
         state: "claude-code(free)",
         events: [
-          { type: "message_created", style: "block", echo: true },
-          { type: "message_created", style: "block" },
+          { type: "message_created", echo: true },
+          { type: "message_created" },
           { type: "input_changed", active: true },
         ],
       },
       {
         state: "claude-code(free)",
-        events: [
-          { type: "message_created", style: "block", echo: true },
-          { type: "message_created", style: "block" },
-        ],
+        events: [{ type: "message_created", echo: true }, { type: "message_created" }],
       },
     ]);
   });
@@ -213,8 +210,8 @@ describe("Claude Code Scene", () => {
       {
         state: "claude-code(free)",
         events: [
-          { type: "message_created", style: "block", echo: true },
-          { type: "message_created", style: "block" },
+          { type: "message_created", echo: true },
+          { type: "message_created" },
           { type: "input_changed", active: true },
         ],
       },
@@ -236,7 +233,7 @@ describe("Claude Code Scene", () => {
       {
         state: "claude-code(plan_review)",
         events: expect.arrayContaining([
-          expect.objectContaining({ type: "message_created", style: "block" }),
+          expect.objectContaining({ type: "message_created" }),
           expect.objectContaining({
             type: "question_created",
             question: expect.stringContaining("Claude has written up a plan"),
@@ -254,8 +251,8 @@ describe("Claude Code Scene", () => {
       {
         state: "claude-code(free)",
         events: [
-          { type: "last_message_updated", style: "block" },
-          { type: "message_created", style: "block" },
+          { type: "last_message_updated" },
+          { type: "message_created" },
           { type: "input_changed", active: true },
         ],
       },
@@ -264,10 +261,7 @@ describe("Claude Code Scene", () => {
       // Snapshot 6: follow-up exchange
       {
         state: "claude-code(free)",
-        events: [
-          { type: "message_created", style: "block", echo: true },
-          { type: "message_created", style: "block" },
-        ],
+        events: [{ type: "message_created", echo: true }, { type: "message_created" }],
       },
       // Snapshot 7: /clear — content reset, input reactivated
       {
@@ -278,8 +272,8 @@ describe("Claude Code Scene", () => {
       {
         state: "claude-code(free)",
         events: [
-          { type: "message_created", style: "block", echo: true },
-          { type: "message_created", style: "block" },
+          { type: "message_created", echo: true },
+          { type: "message_created" },
           { type: "input_changed", active: true },
         ],
       },
@@ -312,8 +306,8 @@ describe("Claude Code Scene", () => {
       {
         state: "claude-code(permission)",
         events: [
-          { type: "message_created", style: "block" },
-          { type: "message_created", style: "block" },
+          { type: "message_created" },
+          { type: "message_created" },
           {
             type: "permission_required",
             command: expect.any(String),
@@ -327,8 +321,8 @@ describe("Claude Code Scene", () => {
       {
         state: "claude-code(free)",
         events: [
-          { type: "last_message_updated", style: "block" },
-          { type: "message_created", style: "block" },
+          { type: "last_message_updated" },
+          { type: "message_created" },
           { type: "input_changed", active: true },
         ],
       },
@@ -346,8 +340,8 @@ describe("Claude Code Scene", () => {
       {
         state: "claude-code(permission)",
         events: [
-          { type: "message_created", style: "block" },
-          { type: "message_created", style: "block" },
+          { type: "message_created" },
+          { type: "message_created" },
           {
             type: "permission_required",
             command: "Fetch",
@@ -359,8 +353,8 @@ describe("Claude Code Scene", () => {
       {
         state: "claude-code(free)",
         events: [
-          { type: "last_message_updated", style: "block" },
-          { type: "message_created", style: "block" },
+          { type: "last_message_updated" },
+          { type: "message_created" },
           { type: "input_changed", active: true },
         ],
       },
@@ -378,9 +372,9 @@ describe("Claude Code Scene", () => {
       {
         state: "claude-code(free)",
         events: [
-          { type: "message_created", style: "block", echo: true },
-          { type: "message_created", style: "block" },
-          { type: "message_created", style: "block" },
+          { type: "message_created", echo: true },
+          { type: "message_created" },
+          { type: "message_created" },
           { type: "input_changed", active: true },
         ],
       },
@@ -398,8 +392,8 @@ describe("Claude Code Scene", () => {
       {
         state: "claude-code(permission)",
         events: [
-          { type: "message_created", style: "block", echo: true },
-          { type: "message_created", style: "block" },
+          { type: "message_created", echo: true },
+          { type: "message_created" },
           {
             type: "permission_required",
             command: "Create file",
@@ -419,10 +413,7 @@ describe("Claude Code Scene", () => {
       // Snapshot 3: back to idle after rejection
       {
         state: "claude-code(free)",
-        events: [
-          { type: "last_message_updated", style: "block" },
-          { type: "input_changed", active: true },
-        ],
+        events: [{ type: "last_message_updated" }, { type: "input_changed", active: true }],
       },
     ]);
   });

@@ -116,11 +116,7 @@ describe("applySlackEvent", () => {
   });
 
   test("message_created skips events that format to null", () => {
-    const state = applySlackEvent(
-      initialState,
-      { type: "message_created", style: "text", content: [""] },
-      false,
-    );
+    const state = applySlackEvent(initialState, { type: "message_created", content: [""] }, false);
     expect(state.pendingOps).toHaveLength(0);
     expect(state.lastPost).toBeNull();
   });
@@ -130,7 +126,6 @@ describe("applySlackEvent", () => {
       initialState,
       {
         type: "message_created",
-        style: "text",
         content: ["echoed"],
         echo: true,
       },
@@ -144,7 +139,6 @@ describe("applySlackEvent", () => {
       initialState,
       {
         type: "message_created",
-        style: "text",
         content: ["echoed"],
         echo: true,
       },
@@ -189,7 +183,7 @@ describe("applySlackEvent", () => {
     };
     const state = applySlackEvent(
       initial,
-      { type: "last_message_updated", style: "text", content: ["updated"] },
+      { type: "last_message_updated", content: ["updated"] },
       false,
     );
     expect(state.pendingOps).toHaveLength(1);
@@ -202,11 +196,7 @@ describe("applySlackEvent", () => {
       lastPost: { type: "message", base: msg("first"), indicator: null },
       pendingOps: [],
     };
-    const state = applySlackEvent(
-      initial,
-      { type: "last_message_updated", style: "text", content: null },
-      false,
-    );
+    const state = applySlackEvent(initial, { type: "last_message_updated", content: null }, false);
     expect(state.pendingOps).toHaveLength(1);
     expect(state.pendingOps[0]).toMatchObject({ type: "delete" });
     expect(state.lastPost).toBeNull();
@@ -215,7 +205,7 @@ describe("applySlackEvent", () => {
   test("last_message_updated without prior message is ignored", () => {
     const state = applySlackEvent(
       initialState,
-      { type: "last_message_updated", style: "text", content: ["orphan"] },
+      { type: "last_message_updated", content: ["orphan"] },
       false,
     );
     expect(state.pendingOps).toHaveLength(0);
@@ -232,7 +222,7 @@ describe("applySlackEvent", () => {
     };
     const state = applySlackEvent(
       initial,
-      { type: "last_message_updated", style: "text", content: ["updated"] },
+      { type: "last_message_updated", content: ["updated"] },
       false,
     );
     expect(state.pendingOps).toHaveLength(1);
@@ -461,5 +451,5 @@ describe("applySlackEvent", () => {
 });
 
 function messageCreated(text: string): SceneEvent {
-  return { type: "message_created", style: "text", content: [text] };
+  return { type: "message_created", content: [text] };
 }
