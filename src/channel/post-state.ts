@@ -22,7 +22,7 @@ import type { RichText } from "../vt/snapshot.ts";
 export interface PostState<M> {
   /** Logical state of the most recent post (for indicator/update tracking). */
   lastPost:
-    | { type: "message"; base: M; indicator: string | null }
+    | { type: "message"; base: M[]; indicator: string | null }
     | { type: "question"; optionCount: number }
     | { type: "permission"; optionCount: number }
     | null;
@@ -32,8 +32,8 @@ export interface PostState<M> {
 
 /** An API operation waiting to be executed. */
 export type PendingOp<M> =
-  | { type: "post"; message: M }
-  | { type: "update"; message: M }
+  | { type: "post"; messages: M[] }
+  | { type: "update"; messages: M[] }
   | { type: "delete" };
 
 /**
@@ -55,17 +55,20 @@ export function emptyPostState<M>(): PostState<M> {
  */
 export interface MessageFormatter<M> {
   /**
-   * Format message content into a platform message.
+   * Format message content into platform messages.
    *
    * The formatter derives the visual style from the content:
    * - `echo` or multi-line content (`content.length > 1`) → block (code block / preformatted)
    * - Single-line content → text (styled text)
    *
+   * Long content may be split across multiple messages to respect
+   * platform character limits.
+   *
    * @param content - Rich text lines to render
    * @param echo - Whether this message is an echo of user input
-   * @returns Platform message, or `null` when content is empty
+   * @returns Platform messages array (empty when content is empty)
    */
-  formatMessageContent(content: RichText[], echo: boolean): M | null;
+  formatMessageContent(content: RichText[], echo: boolean): M[];
 
   /**
    * Format a question event into a platform message.
@@ -173,23 +176,37 @@ export function pushOp<M>(ops: readonly PendingOp<M>[], op: PendingOp<M>): Pendi
   }
 }
 
+/**
+ * Apply {@link MessageFormatter.appendContext} to the last element of a messages array.
+ *
+ * @param messages - Array of platform messages
+ * @param text - Context text to append
+ * @param fmt - Platform-specific message formatter
+ * @returns New array with context appended to the last message
+ */
+function appendContextToLast<M>(messages: M[], text: string, fmt: MessageFormatter<M>): M[] {
+  if (messages.length === 0) return messages;
+  const last = messages[messages.length - 1] as M;
+  return [...messages.slice(0, -1), fmt.appendContext(last, text)];
+}
+
 function applyMessageCreated<M>(
   state: PostState<M>,
   event: SceneEvent & { type: "message_created" },
   fmt: MessageFormatter<M>,
 ): PostState<M> {
-  const message = fmt.formatMessageContent(event.content, event.echo === true);
-  if (!message) return state;
+  const messages = fmt.formatMessageContent(event.content, event.echo === true);
+  if (messages.length === 0) return state;
 
   let ops = state.pendingOps;
   if (state.lastPost?.type === "message" && state.lastPost.indicator) {
-    ops = pushOp(ops, { type: "update", message: state.lastPost.base });
+    ops = pushOp(ops, { type: "update", messages: state.lastPost.base });
   }
 
   const indicator = state.lastPost?.type === "message" ? state.lastPost.indicator : null;
-  const lastPost = { type: "message" as const, base: message, indicator };
-  const postMessage = indicator ? fmt.appendContext(message, indicator) : message;
-  ops = pushOp(ops, { type: "post", message: postMessage });
+  const lastPost = { type: "message" as const, base: messages, indicator };
+  const postMessages = indicator ? appendContextToLast(messages, indicator, fmt) : messages;
+  ops = pushOp(ops, { type: "post", messages: postMessages });
 
   return { lastPost, pendingOps: ops };
 }
@@ -207,17 +224,17 @@ function applyLastMessageUpdated<M>(
     };
   }
 
-  const message = fmt.formatMessageContent(event.content, event.echo === true);
-  if (!message) return state;
+  const messages = fmt.formatMessageContent(event.content, event.echo === true);
+  if (messages.length === 0) return state;
   if (state.lastPost?.type !== "message") return state;
 
-  const lastPost = { ...state.lastPost, base: message };
-  const updateMessage = lastPost.indicator
-    ? fmt.appendContext(message, lastPost.indicator)
-    : message;
+  const lastPost = { ...state.lastPost, base: messages };
+  const updateMessages = lastPost.indicator
+    ? appendContextToLast(messages, lastPost.indicator, fmt)
+    : messages;
   return {
     lastPost,
-    pendingOps: pushOp(state.pendingOps, { type: "update", message: updateMessage }),
+    pendingOps: pushOp(state.pendingOps, { type: "update", messages: updateMessages }),
   };
 }
 
@@ -230,12 +247,12 @@ function applyIndicatorChanged<M>(
 
   const indicator = event.active ? event.text : null;
   const lastPost = { ...state.lastPost, indicator };
-  const updateMessage = indicator
-    ? fmt.appendContext(state.lastPost.base, indicator)
+  const updateMessages = indicator
+    ? appendContextToLast(state.lastPost.base, indicator, fmt)
     : state.lastPost.base;
   return {
     lastPost,
-    pendingOps: pushOp(state.pendingOps, { type: "update", message: updateMessage }),
+    pendingOps: pushOp(state.pendingOps, { type: "update", messages: updateMessages }),
   };
 }
 
@@ -248,10 +265,10 @@ function applyQuestionCreated<M>(
 
   let ops = state.pendingOps;
   if (state.lastPost?.type === "message" && state.lastPost.indicator) {
-    ops = pushOp(ops, { type: "update", message: state.lastPost.base });
+    ops = pushOp(ops, { type: "update", messages: state.lastPost.base });
   }
 
-  ops = pushOp(ops, { type: "post", message });
+  ops = pushOp(ops, { type: "post", messages: [message] });
   return { lastPost: { type: "question", optionCount: event.options.length }, pendingOps: ops };
 }
 
@@ -265,7 +282,7 @@ function applyLastQuestionUpdated<M>(
 
   return {
     lastPost: { type: "question", optionCount: event.options.length },
-    pendingOps: pushOp(state.pendingOps, { type: "update", message }),
+    pendingOps: pushOp(state.pendingOps, { type: "update", messages: [message] }),
   };
 }
 
@@ -278,10 +295,10 @@ function applyPermissionRequired<M>(
 
   let ops = state.pendingOps;
   if (state.lastPost?.type === "message" && state.lastPost.indicator) {
-    ops = pushOp(ops, { type: "update", message: state.lastPost.base });
+    ops = pushOp(ops, { type: "update", messages: state.lastPost.base });
   }
 
-  ops = pushOp(ops, { type: "post", message });
+  ops = pushOp(ops, { type: "post", messages: [message] });
   return {
     lastPost: { type: "permission", optionCount: event.options.length },
     pendingOps: ops,

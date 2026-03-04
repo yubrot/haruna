@@ -5,6 +5,7 @@ import {
   formatPermissionRequired,
   formatQuestion,
   richTextToSlackElements,
+  splitContentByPlainTextLength,
 } from "./formatting.ts";
 
 describe("richTextToSlackElements", () => {
@@ -45,13 +46,12 @@ describe("richTextToSlackElements", () => {
     expect(result).toEqual([{ type: "text", text: "styled" }]);
   });
 
-  test("truncates text exceeding character limit", () => {
+  test("passes through long text without truncation", () => {
     const longText = "x".repeat(4000);
     const result = richTextToSlackElements([longText]);
     expect(result).toHaveLength(1);
     const el = result[0] as { type: "text"; text: string };
-    expect(el.text.length).toBeLessThanOrEqual(3000);
-    expect(el.text.endsWith("…")).toBe(true);
+    expect(el.text.length).toBe(4000);
   });
 
   test("skips empty string segments", () => {
@@ -63,25 +63,28 @@ describe("richTextToSlackElements", () => {
 describe("formatMessageContent", () => {
   test("formats single-line non-echo content as rich_text section", () => {
     const result = formatMessageContent(["hello world"], false);
-    expect(result).toEqual({
-      blocks: [
-        {
-          type: "rich_text",
-          elements: [
-            {
-              type: "rich_text_section",
-              elements: [{ type: "text", text: "hello world" }],
-            },
-          ],
-        },
-      ],
-      text: "hello world",
-    });
+    expect(result).toEqual([
+      {
+        blocks: [
+          {
+            type: "rich_text",
+            elements: [
+              {
+                type: "rich_text_section",
+                elements: [{ type: "text", text: "hello world" }],
+              },
+            ],
+          },
+        ],
+        text: "hello world",
+      },
+    ]);
   });
 
   test("formats multi-line content as rich_text preformatted", () => {
     const result = formatMessageContent(["line 1", "line 2"], false);
-    expect(result).toMatchObject({
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
       blocks: [
         {
           type: "rich_text",
@@ -103,7 +106,8 @@ describe("formatMessageContent", () => {
 
   test("formats echo content as rich_text preformatted", () => {
     const result = formatMessageContent(["code here"], true);
-    expect(result).toMatchObject({
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
       blocks: [
         {
           type: "rich_text",
@@ -120,7 +124,8 @@ describe("formatMessageContent", () => {
 
   test("preserves rich text segment styles for single-line non-echo content", () => {
     const result = formatMessageContent([[{ t: "bold", b: true }, " plain"]], false);
-    expect(result).toMatchObject({
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
       blocks: [
         {
           type: "rich_text",
@@ -139,44 +144,104 @@ describe("formatMessageContent", () => {
     });
   });
 
-  test("returns null for empty content", () => {
-    expect(formatMessageContent([""], false)).toBeNull();
+  test("returns empty array for empty content", () => {
+    expect(formatMessageContent([""], false)).toEqual([]);
   });
 
-  test("truncates text exceeding character limit", () => {
-    const longText = `${"x".repeat(4000)}\nsecond line`;
+  test("passes through long single-line content without truncation", () => {
+    const longText = "x".repeat(4000);
     const result = formatMessageContent([longText], false);
-    const block = result?.blocks[0];
-    expect(block).toMatchObject({ type: "rich_text" });
+    expect(result).toHaveLength(1);
+    const block = result[0]?.blocks[0];
     if (block?.type === "rich_text") {
       const section = block.elements[0];
-      expect(section).toBeDefined();
       if (section) {
         const totalChars = section.elements.reduce(
           (sum, el) => sum + ("text" in el ? el.text.length : 0),
           0,
         );
-        expect(totalChars).toBeLessThanOrEqual(3000);
+        expect(totalChars).toBe(4000);
       }
     }
   });
 
-  test("truncates echo message exceeding character limit", () => {
-    const longText = "x".repeat(4000);
-    const result = formatMessageContent([longText], true);
-    const block = result?.blocks[0];
-    expect(block).toMatchObject({ type: "rich_text" });
-    if (block?.type === "rich_text") {
-      const pre = block.elements[0];
-      expect(pre).toBeDefined();
-      if (pre) {
-        const totalChars = pre.elements.reduce(
-          (sum, el) => sum + ("text" in el ? el.text.length : 0),
-          0,
-        );
-        expect(totalChars).toBeLessThanOrEqual(3000);
+  test("splits long preformatted content into multiple messages", () => {
+    // Create content that exceeds the 2500-char split threshold
+    const lines = Array.from({ length: 200 }, (_, i) => `line ${i}: ${"x".repeat(30)}`);
+    const result = formatMessageContent(lines, false);
+    expect(result.length).toBeGreaterThan(1);
+    for (const msg of result) {
+      expect(msg.blocks[0]).toMatchObject({ type: "rich_text" });
+    }
+  });
+
+  test("splits long echo content into multiple messages", () => {
+    const lines = Array.from({ length: 200 }, (_, i) => `echo ${i}: ${"y".repeat(30)}`);
+    const result = formatMessageContent(lines, true);
+    expect(result.length).toBeGreaterThan(1);
+    for (const msg of result) {
+      const block = msg.blocks[0];
+      if (block?.type === "rich_text") {
+        expect(block.elements[0]?.type).toBe("rich_text_preformatted");
       }
     }
+  });
+
+  test("does not split single-line content (non-block)", () => {
+    const result = formatMessageContent(["short message"], false);
+    expect(result).toHaveLength(1);
+  });
+
+  test("does not split block content under threshold", () => {
+    const result = formatMessageContent(["line 1", "line 2", "line 3"], false);
+    expect(result).toHaveLength(1);
+  });
+});
+
+describe("splitContentByPlainTextLength", () => {
+  test("keeps all lines in one chunk when under threshold", () => {
+    const result = splitContentByPlainTextLength(["a", "b", "c"], 100);
+    expect(result).toEqual([["a", "b", "c"]]);
+  });
+
+  test("splits lines into multiple chunks when exceeding threshold", () => {
+    const result = splitContentByPlainTextLength(["aaaa", "bbbb", "cccc", "dddd"], 9);
+    expect(result).toEqual([
+      ["aaaa", "bbbb"],
+      ["cccc", "dddd"],
+    ]);
+  });
+
+  test("places oversized single line in its own chunk", () => {
+    const result = splitContentByPlainTextLength(["short", "x".repeat(200), "short2"], 50);
+    expect(result).toHaveLength(3);
+    expect(result[0]).toEqual(["short"]);
+    expect(result[1]).toEqual(["x".repeat(200)]);
+    expect(result[2]).toEqual(["short2"]);
+  });
+
+  test("handles empty input", () => {
+    const result = splitContentByPlainTextLength([], 100);
+    expect(result).toEqual([]);
+  });
+
+  test("handles single line", () => {
+    const result = splitContentByPlainTextLength(["only"], 100);
+    expect(result).toEqual([["only"]]);
+  });
+
+  test("measures plain text length for styled content", () => {
+    // Styled segment "bold" has 4 chars of plain text
+    const styledLine = [{ t: "bold", b: true as const }, " text"];
+    const result = splitContentByPlainTextLength(
+      [styledLine, styledLine, styledLine, styledLine],
+      19,
+    );
+    // "bold text" = 9 chars, "bold text\nbold text" = 19 chars → fits in threshold 19
+    expect(result).toEqual([
+      [styledLine, styledLine],
+      [styledLine, styledLine],
+    ]);
   });
 });
 

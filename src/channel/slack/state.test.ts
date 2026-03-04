@@ -4,9 +4,7 @@ import {
   applySceneEvent,
   emptyPostState,
   type MessageFormatter,
-  type PendingOp,
   type PostState,
-  pushOp,
 } from "../post-state.ts";
 import {
   appendContext,
@@ -50,62 +48,6 @@ function msg(text: string) {
     text,
   };
 }
-
-describe("pushOp", () => {
-  test("appends post operations", () => {
-    const ops: PendingOp<SlackMessage>[] = [];
-    const result = pushOp(ops, { type: "post", message: msg("a") });
-    expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({ type: "post" });
-  });
-
-  test("coalesces consecutive update operations", () => {
-    let ops: PendingOp<SlackMessage>[] = [];
-    ops = pushOp(ops, { type: "update", message: msg("v1") });
-    ops = pushOp(ops, { type: "update", message: msg("v2") });
-    ops = pushOp(ops, { type: "update", message: msg("v3") });
-    expect(ops).toHaveLength(1);
-    expect(ops[0]).toMatchObject({ type: "update", message: msg("v3") });
-  });
-
-  test("does not coalesce update after non-update", () => {
-    let ops: PendingOp<SlackMessage>[] = [];
-    ops = pushOp(ops, { type: "post", message: msg("a") });
-    ops = pushOp(ops, { type: "update", message: msg("u1") });
-    ops = pushOp(ops, { type: "post", message: msg("b") });
-    ops = pushOp(ops, { type: "update", message: msg("u2") });
-    expect(ops).toHaveLength(4);
-  });
-
-  test("delete removes trailing updates", () => {
-    let ops: PendingOp<SlackMessage>[] = [];
-    ops = pushOp(ops, { type: "post", message: msg("a") });
-    ops = pushOp(ops, { type: "update", message: msg("u1") });
-    ops = pushOp(ops, { type: "update", message: msg("u2") });
-    ops = pushOp(ops, { type: "delete" });
-    expect(ops).toHaveLength(2);
-    expect(ops[0]).toMatchObject({ type: "post" });
-    expect(ops[1]).toMatchObject({ type: "delete" });
-  });
-
-  test("delete does not remove non-update ops", () => {
-    let ops: PendingOp<SlackMessage>[] = [];
-    ops = pushOp(ops, { type: "post", message: msg("a") });
-    ops = pushOp(ops, { type: "delete" });
-    expect(ops).toHaveLength(2);
-    expect(ops[0]).toMatchObject({ type: "post" });
-    expect(ops[1]).toMatchObject({ type: "delete" });
-  });
-
-  test("does not mutate input array", () => {
-    const ops: PendingOp<SlackMessage>[] = [{ type: "update", message: msg("v1") }];
-    const result = pushOp(ops, { type: "update", message: msg("v2") });
-    expect(ops).toHaveLength(1);
-    expect((ops[0] as { message: { text: string } }).message.text).toBe("v1");
-    expect(result).toHaveLength(1);
-    expect((result[0] as { message: { text: string } }).message.text).toBe("v2");
-  });
-});
 
 describe("applySlackEvent", () => {
   test("message_created enqueues a post", () => {
@@ -152,7 +94,7 @@ describe("applySlackEvent", () => {
     let state: PostState<SlackMessage> = {
       lastPost: {
         type: "message",
-        base: msg("first"),
+        base: [msg("first")],
         indicator: "Thinking...",
       },
       pendingOps: [],
@@ -166,9 +108,9 @@ describe("applySlackEvent", () => {
     // The new post should include the indicator
     const postOp = state.pendingOps[1] as {
       type: "post";
-      message: { blocks: unknown[] };
+      messages: { blocks: unknown[] }[];
     };
-    expect(postOp.message.blocks).toHaveLength(2); // rich_text + context
+    expect(postOp.messages[0]?.blocks).toHaveLength(2); // rich_text + context
     // lastPost should carry the indicator
     expect(state.lastPost).toMatchObject({
       type: "message",
@@ -178,7 +120,7 @@ describe("applySlackEvent", () => {
 
   test("last_message_updated enqueues an update", () => {
     const initial: PostState<SlackMessage> = {
-      lastPost: { type: "message", base: msg("first"), indicator: null },
+      lastPost: { type: "message", base: [msg("first")], indicator: null },
       pendingOps: [],
     };
     const state = applySlackEvent(
@@ -193,7 +135,7 @@ describe("applySlackEvent", () => {
 
   test("last_message_updated with null content enqueues delete", () => {
     const initial: PostState<SlackMessage> = {
-      lastPost: { type: "message", base: msg("first"), indicator: null },
+      lastPost: { type: "message", base: [msg("first")], indicator: null },
       pendingOps: [],
     };
     const state = applySlackEvent(initial, { type: "last_message_updated", content: null }, false);
@@ -215,7 +157,7 @@ describe("applySlackEvent", () => {
     const initial: PostState<SlackMessage> = {
       lastPost: {
         type: "message",
-        base: msg("first"),
+        base: [msg("first")],
         indicator: "Working...",
       },
       pendingOps: [],
@@ -229,14 +171,14 @@ describe("applySlackEvent", () => {
     // The update message should include the indicator
     const updateOp = state.pendingOps[0] as {
       type: "update";
-      message: { blocks: unknown[] };
+      messages: { blocks: unknown[] }[];
     };
-    expect(updateOp.message.blocks).toHaveLength(2); // rich_text + context
+    expect(updateOp.messages[0]?.blocks).toHaveLength(2); // rich_text + context
   });
 
   test("indicator_changed active enqueues an update", () => {
     const initial: PostState<SlackMessage> = {
-      lastPost: { type: "message", base: msg("hello"), indicator: null },
+      lastPost: { type: "message", base: [msg("hello")], indicator: null },
       pendingOps: [],
     };
     const state = applySlackEvent(
@@ -253,7 +195,7 @@ describe("applySlackEvent", () => {
     const initial: PostState<SlackMessage> = {
       lastPost: {
         type: "message",
-        base: msg("hello"),
+        base: [msg("hello")],
         indicator: "Thinking...",
       },
       pendingOps: [],
@@ -269,9 +211,9 @@ describe("applySlackEvent", () => {
     // The update message should be the base (no context block)
     const updateOp = state.pendingOps[0] as {
       type: "update";
-      message: { blocks: unknown[] };
+      messages: { blocks: unknown[] }[];
     };
-    expect(updateOp.message.blocks).toHaveLength(1); // only rich_text
+    expect(updateOp.messages[0]?.blocks).toHaveLength(1); // only rich_text
   });
 
   test("indicator_changed without prior message is ignored", () => {
@@ -313,7 +255,7 @@ describe("applySlackEvent", () => {
 
   test("question_created strips indicator from previous message", () => {
     const initial: PostState<SlackMessage> = {
-      lastPost: { type: "message", base: msg("msg"), indicator: "Working..." },
+      lastPost: { type: "message", base: [msg("msg")], indicator: "Working..." },
       pendingOps: [],
     };
     const state = applySlackEvent(
@@ -384,7 +326,7 @@ describe("applySlackEvent", () => {
 
   test("permission_required enqueues a post and resets lastPost", () => {
     const initial: PostState<SlackMessage> = {
-      lastPost: { type: "message", base: msg("msg"), indicator: null },
+      lastPost: { type: "message", base: [msg("msg")], indicator: null },
       pendingOps: [],
     };
     const state = applySlackEvent(
@@ -406,7 +348,7 @@ describe("applySlackEvent", () => {
     const initial: PostState<SlackMessage> = {
       lastPost: {
         type: "message",
-        base: msg("msg"),
+        base: [msg("msg")],
         indicator: "Working...",
       },
       pendingOps: [],
@@ -430,7 +372,7 @@ describe("applySlackEvent", () => {
 
   test("consecutive indicator changes coalesce via pushOp", () => {
     const initial: PostState<SlackMessage> = {
-      lastPost: { type: "message", base: msg("hello"), indicator: null },
+      lastPost: { type: "message", base: [msg("hello")], indicator: null },
       pendingOps: [],
     };
     let state = applySlackEvent(

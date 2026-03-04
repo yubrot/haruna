@@ -65,8 +65,11 @@ export interface SlackMessage {
   text: string;
 }
 
-/** Maximum plain-text characters allowed in a single rich_text block. */
-const RICH_TEXT_CHAR_LIMIT = 3000;
+/**
+ * Plain-text character threshold above which preformatted content is split
+ * across multiple messages to avoid truncation.
+ */
+const SPLIT_THRESHOLD = 2000;
 
 /**
  * Return a copy of `message` with a mrkdwn context block appended.
@@ -89,99 +92,39 @@ export function appendContext(message: SlackMessage, text: string): SlackMessage
 /**
  * Convert haruna {@link RichText} lines into Slack rich_text leaf elements.
  *
- * Output is truncated at {@link RICH_TEXT_CHAR_LIMIT} characters to stay
- * within Slack's block size limit.
+ * Callers are expected to split content via {@link splitContentByPlainTextLength}
+ * before calling this function so that each chunk stays within platform limits.
  *
  * @param lines - Rich text lines to convert
  * @returns Slack rich_text leaf elements
  */
 export function richTextToSlackElements(lines: RichText[]): SlackRichElement[] {
   const elements: SlackRichElement[] = [];
-  let charCount = 0;
-  let truncated = false;
 
   for (let li = 0; li < lines.length; li++) {
-    if (truncated) break;
-
-    // Insert newline separator between lines
     if (li > 0) {
-      if (charCount + 1 > RICH_TEXT_CHAR_LIMIT) {
-        truncated = true;
-        break;
-      }
       elements.push({ type: "text", text: "\n" });
-      charCount += 1;
     }
 
     const line = lines[li] as RichText;
 
     if (typeof line === "string") {
-      const result = pushText(elements, line, charCount);
-      charCount = result.charCount;
-      truncated = result.truncated;
+      if (line) elements.push({ type: "text", text: line });
     } else {
       for (const seg of line) {
-        if (truncated) break;
         if (typeof seg === "string") {
-          const result = pushText(elements, seg, charCount);
-          charCount = result.charCount;
-          truncated = result.truncated;
-        } else {
-          const result = pushStyledSegment(elements, seg, charCount);
-          charCount = result.charCount;
-          truncated = result.truncated;
+          if (seg) elements.push({ type: "text", text: seg });
+        } else if (seg.t) {
+          const style = buildStyle(seg);
+          const el: SlackTextElement = { type: "text", text: seg.t };
+          if (style) el.style = style;
+          elements.push(el);
         }
       }
     }
   }
 
   return elements;
-}
-
-/** Push a plain text string, handling truncation. */
-function pushText(
-  elements: SlackRichElement[],
-  text: string,
-  charCount: number,
-): { charCount: number; truncated: boolean } {
-  const remaining = RICH_TEXT_CHAR_LIMIT - charCount;
-  if (text.length > remaining) {
-    const truncText = `${text.slice(0, Math.max(0, remaining - 1))}…`;
-    elements.push({ type: "text", text: truncText });
-    return { charCount: RICH_TEXT_CHAR_LIMIT, truncated: true };
-  }
-  if (text) {
-    elements.push({ type: "text", text });
-  }
-  return { charCount: charCount + text.length, truncated: false };
-}
-
-/** Push a styled segment, mapping b/i/s to Slack style. */
-function pushStyledSegment(
-  elements: SlackRichElement[],
-  seg: StyledSegment,
-  charCount: number,
-): { charCount: number; truncated: boolean } {
-  const remaining = RICH_TEXT_CHAR_LIMIT - charCount;
-  let text = seg.t;
-  let truncated = false;
-
-  if (text.length > remaining) {
-    text = `${text.slice(0, Math.max(0, remaining - 1))}…`;
-    truncated = true;
-  }
-
-  if (text) {
-    const style = buildStyle(seg);
-    const el: SlackTextElement = { type: "text", text };
-    if (style) el.style = style;
-    elements.push(el);
-  }
-
-  return {
-    charCount: truncated ? RICH_TEXT_CHAR_LIMIT : charCount + seg.t.length,
-    truncated,
-  };
 }
 
 /** Build a Slack style object from a styled segment, or return undefined. */
@@ -199,31 +142,40 @@ function richTextBlock(containers: SlackRichTextContainer[]): SlackBlock {
 }
 
 /**
- * Format message content into a {@link SlackMessage}.
+ * Format message content into {@link SlackMessage} array.
+ *
+ * Long preformatted content (echo or multi-line) is split across multiple
+ * messages when it exceeds {@link SPLIT_THRESHOLD} characters.
  *
  * @param content - Rich text lines to render
  * @param echo - Whether this message is an echo of user input
- * @returns Slack message payload, or `null` when content is empty
+ * @returns Array of Slack message payloads (empty when content is empty)
  */
-export function formatMessageContent(content: RichText[], echo: boolean): SlackMessage | null {
+export function formatMessageContent(content: RichText[], echo: boolean): SlackMessage[] {
   const plain = content.map(richTextToPlainText).join("\n");
-  if (!plain) return null;
+  if (!plain) return [];
 
   if (echo || content.length > 1) {
-    const elements = richTextToSlackElements(content);
-    // rich_text_preformatted only supports SlackTextElement (not emoji)
-    const textElements = elements.filter((el): el is SlackTextElement => el.type === "text");
-    return {
-      blocks: [richTextBlock([{ type: "rich_text_preformatted", elements: textElements }])],
-      text: plain,
-    };
+    const chunks = splitContentByPlainTextLength(content, SPLIT_THRESHOLD);
+    return chunks.map((chunk) => {
+      const chunkPlain = chunk.map(richTextToPlainText).join("\n");
+      const elements = richTextToSlackElements(chunk);
+      // rich_text_preformatted only supports SlackTextElement (not emoji)
+      const textElements = elements.filter((el): el is SlackTextElement => el.type === "text");
+      return {
+        blocks: [richTextBlock([{ type: "rich_text_preformatted", elements: textElements }])],
+        text: chunkPlain,
+      };
+    });
   }
 
   const elements = richTextToSlackElements(content);
-  return {
-    blocks: [richTextBlock([{ type: "rich_text_section", elements }])],
-    text: plain,
-  };
+  return [
+    {
+      blocks: [richTextBlock([{ type: "rich_text_section", elements }])],
+      text: plain,
+    },
+  ];
 }
 
 /**
@@ -281,6 +233,42 @@ export function formatPermissionRequired(event: {
   }
 
   return { blocks, text: `Permission required: ${event.command}` };
+}
+
+/**
+ * Split {@link RichText} lines into chunks where each chunk's plain-text
+ * length does not exceed `threshold` characters.
+ *
+ * Each line is kept intact — splitting only happens between lines.
+ * A single line that exceeds the threshold is placed in its own chunk.
+ *
+ * @param content - Rich text lines to split
+ * @param threshold - Maximum plain-text character count per chunk
+ * @returns Array of line groups
+ */
+export function splitContentByPlainTextLength(
+  content: RichText[],
+  threshold: number,
+): RichText[][] {
+  const chunks: RichText[][] = [];
+  let current: RichText[] = [];
+  let currentLen = 0;
+
+  for (const line of content) {
+    const lineLen = richTextToPlainText(line).length;
+    // +1 accounts for the newline separator between lines
+    const added = current.length === 0 ? lineLen : lineLen + 1;
+    if (current.length > 0 && currentLen + added > threshold) {
+      chunks.push(current);
+      current = [line];
+      currentLen = lineLen;
+    } else {
+      current.push(line);
+      currentLen += added;
+    }
+  }
+  if (current.length > 0) chunks.push(current);
+  return chunks;
 }
 
 /** Append numbered options to an element list with leading separator. */

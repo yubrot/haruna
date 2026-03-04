@@ -66,8 +66,8 @@ export class SlackChannel implements Channel {
 
   /** Pure output state (lastPost + pending ops). */
   private state: PostState<SlackMessage> = emptyPostState<SlackMessage>();
-  /** Slack message `ts` of the most recently posted message (set after API success). */
-  private currentTs: string | null = null;
+  /** Slack message `ts` values of the most recently posted logical message (set after API success). */
+  private currentTsList: string[] = [];
   private readonly scheduler: Scheduler;
   private readonly opQueue: SequentialQueue;
 
@@ -134,7 +134,8 @@ export class SlackChannel implements Channel {
     this.app.event("reaction_added", async ({ event }) => {
       if (event.item.type !== "message") return;
       if (event.item.channel !== targetChannel) return;
-      if (event.item.ts !== this.currentTs) return;
+      const lastTs = this.currentTsList[this.currentTsList.length - 1];
+      if (!lastTs || event.item.ts !== lastTs) return;
 
       const lastPost = this.state.lastPost;
       if (lastPost?.type !== "question" && lastPost?.type !== "permission") return;
@@ -184,7 +185,8 @@ export class SlackChannel implements Channel {
         return;
       }
 
-      text = text.replace(new RegExp(`<@${this.botUserId}>\\s*`, "g"), "").trim();
+      if (this.botUserId) text = text.replaceAll(`<@${this.botUserId}>`, "");
+      text = text.trim();
       if (!text) return;
 
       const input = this.resolveInput(text);
@@ -209,7 +211,7 @@ export class SlackChannel implements Channel {
     this.app = null;
     this.send = null;
     this.state = emptyPostState<SlackMessage>();
-    this.currentTs = null;
+    this.currentTsList = [];
     this.botUserId = null;
   }
 
@@ -253,6 +255,9 @@ export class SlackChannel implements Channel {
   /**
    * Execute a single API operation against the Slack client.
    *
+   * For `post` and `update`, the messages array may contain multiple items
+   * that are posted/updated/deleted individually to respect platform limits.
+   *
    * @param op - The operation to execute
    */
   private async executeOp(op: PendingOp<SlackMessage>): Promise<void> {
@@ -262,13 +267,18 @@ export class SlackChannel implements Channel {
     switch (op.type) {
       case "post": {
         try {
-          const res = await client.chat.postMessage({
-            channel: this.options.channel,
-            ...(this.options.thread && { thread_ts: this.options.thread }),
-            blocks: op.message.blocks,
-            text: op.message.text,
-          });
-          this.currentTs = (res.ts as string) ?? null;
+          const tsList: string[] = [];
+          for (const msg of op.messages) {
+            const res = await client.chat.postMessage({
+              channel: this.options.channel,
+              ...(this.options.thread && { thread_ts: this.options.thread }),
+              blocks: msg.blocks,
+              text: msg.text,
+            });
+            const ts = (res.ts as string) ?? null;
+            if (ts) tsList.push(ts);
+          }
+          this.currentTsList = tsList;
         } catch (error: unknown) {
           console.error(
             `[haruna][${this.name}] failed to post message: ${error instanceof Error ? error.message : error}`,
@@ -277,14 +287,42 @@ export class SlackChannel implements Channel {
         break;
       }
       case "update": {
-        if (!this.currentTs) break;
         try {
-          await client.chat.update({
-            channel: this.options.channel,
-            ts: this.currentTs,
-            blocks: op.message.blocks,
-            text: op.message.text,
-          });
+          const prev = this.currentTsList;
+          const next = op.messages;
+          const updatedTsList: string[] = [];
+          // Update existing, post new, delete surplus
+          for (let i = 0; i < next.length; i++) {
+            const msg = next[i] as SlackMessage;
+            if (i < prev.length) {
+              const ts = prev[i] as string;
+              await client.chat.update({
+                channel: this.options.channel,
+                ts,
+                blocks: msg.blocks,
+                text: msg.text,
+              });
+              updatedTsList.push(ts);
+            } else {
+              const res = await client.chat.postMessage({
+                channel: this.options.channel,
+                ...(this.options.thread && { thread_ts: this.options.thread }),
+                blocks: msg.blocks,
+                text: msg.text,
+              });
+              const ts = (res.ts as string) ?? null;
+              if (ts) updatedTsList.push(ts);
+            }
+          }
+          // Delete surplus messages from the end
+          for (let i = next.length; i < prev.length; i++) {
+            const ts = prev[i] as string;
+            await client.chat.delete({
+              channel: this.options.channel,
+              ts,
+            });
+          }
+          this.currentTsList = updatedTsList;
         } catch (error: unknown) {
           console.error(
             `[haruna][${this.name}] failed to update message: ${error instanceof Error ? error.message : error}`,
@@ -293,18 +331,19 @@ export class SlackChannel implements Channel {
         break;
       }
       case "delete": {
-        if (!this.currentTs) break;
         try {
-          await client.chat.delete({
-            channel: this.options.channel,
-            ts: this.currentTs,
-          });
+          for (const ts of this.currentTsList) {
+            await client.chat.delete({
+              channel: this.options.channel,
+              ts,
+            });
+          }
         } catch (error: unknown) {
           console.error(
             `[haruna][${this.name}] failed to delete message: ${error instanceof Error ? error.message : error}`,
           );
         }
-        this.currentTs = null;
+        this.currentTsList = [];
         break;
       }
     }

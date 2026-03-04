@@ -60,10 +60,10 @@ export class DiscordChannel implements Channel {
 
   /** Pure output state (lastPost + pending ops). */
   private state: PostState<DiscordMessage> = emptyPostState<DiscordMessage>();
-  /** Discord message ID of the most recently posted message (set after API success). */
-  private currentMessageId: string | null = null;
-  /** Cached Discord message object for editing/deleting. */
-  private currentMessage: Message | null = null;
+  /** Text channel for posting new messages (resolved at start). */
+  private targetChannel: { send(content: string): Promise<Message> } | null = null;
+  /** Discord Message objects for the most recently posted logical message (set after API success). */
+  private currentMessages: Message[] = [];
   private readonly scheduler: Scheduler;
   private readonly opQueue: SequentialQueue;
 
@@ -118,7 +118,8 @@ export class DiscordChannel implements Channel {
 
     this.client.on(Events.MessageReactionAdd, (reaction, user) => {
       if (reaction.message.channelId !== targetChannel) return;
-      if (reaction.message.id !== this.currentMessageId) return;
+      const lastMsg = this.currentMessages[this.currentMessages.length - 1];
+      if (!lastMsg || reaction.message.id !== lastMsg.id) return;
 
       const lastPost = this.state.lastPost;
       if (lastPost?.type !== "question" && lastPost?.type !== "permission") return;
@@ -152,12 +153,15 @@ export class DiscordChannel implements Channel {
       let text = message.content;
 
       // Mention filter
-      if (this.options.requireMention) {
-        if (!(this.botUserId && text.includes(`<@${this.botUserId}>`))) {
-          return;
-        }
-        text = text.replace(new RegExp(`<@${this.botUserId}>\\s*`, "g"), "").trim();
+      if (
+        this.options.requireMention &&
+        !(this.botUserId && text.includes(`<@${this.botUserId}>`))
+      ) {
+        return;
       }
+
+      if (this.botUserId) text = text.replaceAll(`<@${this.botUserId}>`, "");
+      text = text.trim();
 
       if (!text) return;
 
@@ -166,6 +170,18 @@ export class DiscordChannel implements Channel {
     });
 
     await this.client.login(this.options.token);
+
+    try {
+      const fetched = await this.client.channels.fetch(this.options.channel);
+      if (fetched && "send" in fetched) {
+        this.targetChannel = fetched as { send(content: string): Promise<Message> };
+      }
+    } catch (error: unknown) {
+      console.error(
+        `[haruna][${this.name}] failed to fetch channel: ${error instanceof Error ? error.message : error}`,
+      );
+    }
+
     await readyPromise;
   }
 
@@ -184,8 +200,8 @@ export class DiscordChannel implements Channel {
     this.client = null;
     this.send = null;
     this.state = emptyPostState<DiscordMessage>();
-    this.currentMessageId = null;
-    this.currentMessage = null;
+    this.targetChannel = null;
+    this.currentMessages = [];
     this.botUserId = null;
   }
 
@@ -224,19 +240,23 @@ export class DiscordChannel implements Channel {
   /**
    * Execute a single API operation against the Discord client.
    *
+   * For `post` and `update`, the messages array may contain multiple items
+   * that are sent/updated/deleted individually to respect platform limits.
+   *
    * @param op - The operation to execute
    */
   private async executeOp(op: PendingOp<DiscordMessage>): Promise<void> {
-    if (!this.client) return;
+    const channel = this.targetChannel;
+    if (!channel) return;
 
     switch (op.type) {
       case "post": {
         try {
-          const channel = await this.client.channels.fetch(this.options.channel);
-          if (!channel || !("send" in channel)) break;
-          const sent = await channel.send(op.message);
-          this.currentMessageId = sent.id;
-          this.currentMessage = sent;
+          const sent: Message[] = [];
+          for (const msg of op.messages) {
+            sent.push(await channel.send(msg));
+          }
+          this.currentMessages = sent;
         } catch (error: unknown) {
           console.error(
             `[haruna][${this.name}] failed to post message: ${error instanceof Error ? error.message : error}`,
@@ -245,9 +265,25 @@ export class DiscordChannel implements Channel {
         break;
       }
       case "update": {
-        if (!this.currentMessage) break;
         try {
-          await this.currentMessage.edit(op.message);
+          const prev = this.currentMessages;
+          const next = op.messages;
+          const updated: Message[] = [];
+          for (let i = 0; i < next.length; i++) {
+            const msg = next[i] as DiscordMessage;
+            if (i < prev.length) {
+              const existing = prev[i] as Message;
+              await existing.edit(msg);
+              updated.push(existing);
+            } else {
+              updated.push(await channel.send(msg));
+            }
+          }
+          for (let i = next.length; i < prev.length; i++) {
+            const surplus = prev[i] as Message;
+            await surplus.delete();
+          }
+          this.currentMessages = updated;
         } catch (error: unknown) {
           console.error(
             `[haruna][${this.name}] failed to update message: ${error instanceof Error ? error.message : error}`,
@@ -256,16 +292,16 @@ export class DiscordChannel implements Channel {
         break;
       }
       case "delete": {
-        if (!this.currentMessage) break;
         try {
-          await this.currentMessage.delete();
+          for (const msg of this.currentMessages) {
+            await msg.delete();
+          }
         } catch (error: unknown) {
           console.error(
             `[haruna][${this.name}] failed to delete message: ${error instanceof Error ? error.message : error}`,
           );
         }
-        this.currentMessageId = null;
-        this.currentMessage = null;
+        this.currentMessages = [];
         break;
       }
     }

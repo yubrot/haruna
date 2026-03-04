@@ -995,4 +995,16 @@ describe("SlackChannel", () => {
     // First post fails, second should still be attempted
     expect(mockPostMessage).toHaveBeenCalledTimes(2);
   });
+
+  test("multi-message post sends all messages individually", async () => {
+    await channel.start(send);
+
+    // Create content long enough to split into multiple messages
+    const lines = Array.from({ length: 200 }, (_, i) => `line ${i}: ${"x".repeat(30)}`);
+    channel.receive(frame([{ type: "message_created", content: lines }]));
+    await channel.stop();
+
+    // Should have sent multiple messages
+    expect(mockPostMessage.mock.calls.length).toBeGreaterThan(1);
+  });
 });

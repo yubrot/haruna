@@ -28,7 +28,9 @@ function simulateReaction(reaction: Record<string, unknown>, user: Record<string
   emit("messageReactionAdd", reaction, user);
 }
 
-const mockSend = mock(() => Promise.resolve({ id: "MSG_1", edit: mockEdit, delete: mockDelete }));
+const mockSend = mock(() =>
+  Promise.resolve({ id: "MSG_1", edit: mockEdit, delete: mockDelete, channel: { send: mockSend } }),
+);
 const mockEdit = mock(() => Promise.resolve());
 const mockDelete = mock(() => Promise.resolve());
 const mockLogin = mock(() => Promise.resolve());
@@ -968,5 +970,26 @@ describe("DiscordChannel", () => {
     // The indicator update + strip coalesce into one update restoring the original message
     expect(mockEdit).toHaveBeenCalledTimes(1);
     expect(mockEdit).toHaveBeenCalledWith("msg");
+  });
+
+  test("multi-message post sends all messages individually", async () => {
+    mockLogin.mockImplementation(() => {
+      emitReady();
+      return Promise.resolve();
+    });
+    await channel.start(send);
+
+    // Create content long enough to split into multiple messages
+    const lines = Array.from({ length: 100 }, (_, i) => `line ${i}: ${"x".repeat(30)}`);
+    channel.receive(frame([{ type: "message_created", content: lines }]));
+    await channel.stop();
+
+    // Should have sent multiple messages
+    expect(mockSend.mock.calls.length).toBeGreaterThan(1);
+    for (const call of mockSend.mock.calls) {
+      const msg = (call as unknown[])[0] as string;
+      expect(msg.startsWith("```\n")).toBe(true);
+      expect(msg.endsWith("\n```")).toBe(true);
+    }
   });
 });

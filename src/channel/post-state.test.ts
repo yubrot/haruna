@@ -20,8 +20,8 @@ function msg(text: string): Msg {
 const fmt: MessageFormatter<Msg> = {
   formatMessageContent(content, _echo) {
     const text = content.map((l) => (typeof l === "string" ? l : "")).join("\n");
-    if (!text) return null;
-    return msg(text);
+    if (!text) return [];
+    return [msg(text)];
   },
   formatQuestion(event) {
     return msg(`Q: ${event.question}`);
@@ -37,34 +37,34 @@ const fmt: MessageFormatter<Msg> = {
 describe("pushOp", () => {
   test("appends post operations", () => {
     const ops: PendingOp<Msg>[] = [];
-    const result = pushOp(ops, { type: "post", message: msg("a") });
+    const result = pushOp(ops, { type: "post", messages: [msg("a")] });
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({ type: "post" });
   });
 
   test("coalesces consecutive update operations", () => {
     let ops: PendingOp<Msg>[] = [];
-    ops = pushOp(ops, { type: "update", message: msg("v1") });
-    ops = pushOp(ops, { type: "update", message: msg("v2") });
-    ops = pushOp(ops, { type: "update", message: msg("v3") });
+    ops = pushOp(ops, { type: "update", messages: [msg("v1")] });
+    ops = pushOp(ops, { type: "update", messages: [msg("v2")] });
+    ops = pushOp(ops, { type: "update", messages: [msg("v3")] });
     expect(ops).toHaveLength(1);
-    expect(ops[0]).toMatchObject({ type: "update", message: msg("v3") });
+    expect(ops[0]).toMatchObject({ type: "update", messages: [msg("v3")] });
   });
 
   test("does not coalesce update after non-update", () => {
     let ops: PendingOp<Msg>[] = [];
-    ops = pushOp(ops, { type: "post", message: msg("a") });
-    ops = pushOp(ops, { type: "update", message: msg("u1") });
-    ops = pushOp(ops, { type: "post", message: msg("b") });
-    ops = pushOp(ops, { type: "update", message: msg("u2") });
+    ops = pushOp(ops, { type: "post", messages: [msg("a")] });
+    ops = pushOp(ops, { type: "update", messages: [msg("u1")] });
+    ops = pushOp(ops, { type: "post", messages: [msg("b")] });
+    ops = pushOp(ops, { type: "update", messages: [msg("u2")] });
     expect(ops).toHaveLength(4);
   });
 
   test("delete removes trailing updates", () => {
     let ops: PendingOp<Msg>[] = [];
-    ops = pushOp(ops, { type: "post", message: msg("a") });
-    ops = pushOp(ops, { type: "update", message: msg("u1") });
-    ops = pushOp(ops, { type: "update", message: msg("u2") });
+    ops = pushOp(ops, { type: "post", messages: [msg("a")] });
+    ops = pushOp(ops, { type: "update", messages: [msg("u1")] });
+    ops = pushOp(ops, { type: "update", messages: [msg("u2")] });
     ops = pushOp(ops, { type: "delete" });
     expect(ops).toHaveLength(2);
     expect(ops[0]).toMatchObject({ type: "post" });
@@ -73,18 +73,18 @@ describe("pushOp", () => {
 
   test("delete does not remove non-update ops", () => {
     let ops: PendingOp<Msg>[] = [];
-    ops = pushOp(ops, { type: "post", message: msg("a") });
+    ops = pushOp(ops, { type: "post", messages: [msg("a")] });
     ops = pushOp(ops, { type: "delete" });
     expect(ops).toHaveLength(2);
   });
 
   test("does not mutate input array", () => {
-    const ops: PendingOp<Msg>[] = [{ type: "update", message: msg("v1") }];
-    const result = pushOp(ops, { type: "update", message: msg("v2") });
+    const ops: PendingOp<Msg>[] = [{ type: "update", messages: [msg("v1")] }];
+    const result = pushOp(ops, { type: "update", messages: [msg("v2")] });
     expect(ops).toHaveLength(1);
-    expect((ops[0] as { message: Msg }).message.text).toBe("v1");
+    expect((ops[0] as { messages: Msg[] }).messages[0]?.text).toBe("v1");
     expect(result).toHaveLength(1);
-    expect((result[0] as { message: Msg }).message.text).toBe("v2");
+    expect((result[0] as { messages: Msg[] }).messages[0]?.text).toBe("v2");
   });
 });
 
@@ -126,7 +126,7 @@ describe("applySceneEvent", () => {
 
   test("message_created carries forward active indicator", () => {
     let state: PostState<Msg> = {
-      lastPost: { type: "message", base: msg("first"), indicator: "Thinking..." },
+      lastPost: { type: "message", base: [msg("first")], indicator: "Thinking..." },
       pendingOps: [],
     };
     state = applySceneEvent(state, messageCreated("second"), false, fmt);
@@ -135,14 +135,14 @@ describe("applySceneEvent", () => {
     expect(state.pendingOps[0]).toMatchObject({ type: "update" });
     expect(state.pendingOps[1]).toMatchObject({ type: "post" });
     // The new post should include the indicator via appendContext
-    const postOp = state.pendingOps[1] as { type: "post"; message: Msg };
-    expect(postOp.message.text).toContain("Thinking...");
+    const postOp = state.pendingOps[1] as { type: "post"; messages: Msg[] };
+    expect(postOp.messages[0]?.text).toContain("Thinking...");
     expect(state.lastPost).toMatchObject({ type: "message", indicator: "Thinking..." });
   });
 
   test("last_message_updated enqueues an update", () => {
     const initial: PostState<Msg> = {
-      lastPost: { type: "message", base: msg("first"), indicator: null },
+      lastPost: { type: "message", base: [msg("first")], indicator: null },
       pendingOps: [],
     };
     const state = applySceneEvent(
@@ -157,7 +157,7 @@ describe("applySceneEvent", () => {
 
   test("last_message_updated with null content enqueues delete", () => {
     const initial: PostState<Msg> = {
-      lastPost: { type: "message", base: msg("first"), indicator: null },
+      lastPost: { type: "message", base: [msg("first")], indicator: null },
       pendingOps: [],
     };
     const state = applySceneEvent(
@@ -183,7 +183,7 @@ describe("applySceneEvent", () => {
 
   test("indicator_changed active enqueues an update", () => {
     const initial: PostState<Msg> = {
-      lastPost: { type: "message", base: msg("hello"), indicator: null },
+      lastPost: { type: "message", base: [msg("hello")], indicator: null },
       pendingOps: [],
     };
     const state = applySceneEvent(
@@ -199,7 +199,7 @@ describe("applySceneEvent", () => {
 
   test("indicator_changed inactive restores base", () => {
     const initial: PostState<Msg> = {
-      lastPost: { type: "message", base: msg("hello"), indicator: "Thinking..." },
+      lastPost: { type: "message", base: [msg("hello")], indicator: "Thinking..." },
       pendingOps: [],
     };
     const state = applySceneEvent(
@@ -210,8 +210,8 @@ describe("applySceneEvent", () => {
     );
     expect(state.pendingOps).toHaveLength(1);
     expect(state.lastPost).toMatchObject({ indicator: null });
-    const updateOp = state.pendingOps[0] as { type: "update"; message: Msg };
-    expect(updateOp.message.text).toBe("hello");
+    const updateOp = state.pendingOps[0] as { type: "update"; messages: Msg[] };
+    expect(updateOp.messages[0]?.text).toBe("hello");
   });
 
   test("indicator_changed without prior message is ignored", () => {
@@ -278,7 +278,7 @@ describe("applySceneEvent", () => {
 
   test("consecutive indicator changes coalesce via pushOp", () => {
     const initial: PostState<Msg> = {
-      lastPost: { type: "message", base: msg("hello"), indicator: null },
+      lastPost: { type: "message", base: [msg("hello")], indicator: null },
       pendingOps: [],
     };
     let state = applySceneEvent(
@@ -301,6 +301,24 @@ describe("applySceneEvent", () => {
     );
     expect(state.pendingOps).toHaveLength(1);
     expect(state.pendingOps[0]).toMatchObject({ type: "update" });
+  });
+
+  test("indicator appended to last message in multi-message base", () => {
+    const multiBase = [msg("part1"), msg("part2")];
+    const initial: PostState<Msg> = {
+      lastPost: { type: "message", base: multiBase, indicator: null },
+      pendingOps: [],
+    };
+    const state = applySceneEvent(
+      initial,
+      { type: "indicator_changed", active: true, text: "Working..." },
+      false,
+      fmt,
+    );
+    const updateOp = state.pendingOps[0] as { type: "update"; messages: Msg[] };
+    expect(updateOp.messages).toHaveLength(2);
+    expect(updateOp.messages[0]?.text).toBe("part1");
+    expect(updateOp.messages[1]?.text).toBe("part2 [Working...]");
   });
 });
 

@@ -12,8 +12,11 @@ import type { MessageFormatter } from "../post-state.ts";
 /** Discord message is a plain Markdown string. */
 export type DiscordMessage = string;
 
-/** Maximum characters allowed in a single Discord message. */
-const DISCORD_CHAR_LIMIT = 2000;
+/**
+ * Plain-text character threshold above which block content is split
+ * across multiple messages to avoid truncation.
+ */
+const SPLIT_THRESHOLD = 1000;
 
 /** Discord implementation of the {@link MessageFormatter} interface. */
 export const discordFormatter: MessageFormatter<DiscordMessage> = {
@@ -24,22 +27,27 @@ export const discordFormatter: MessageFormatter<DiscordMessage> = {
 };
 
 /**
- * Format message content into a Discord Markdown string.
+ * Format message content into Discord Markdown strings.
+ *
+ * Long block content (echo or multi-line) is split across multiple
+ * messages when it exceeds {@link SPLIT_THRESHOLD} characters.
  *
  * @param content - Rich text lines to render
  * @param echo - Whether this message is an echo of user input
- * @returns Discord message string, or `null` when content is empty
+ * @returns Array of Discord message strings (empty when content is empty)
  */
-export function formatMessageContent(content: RichText[], echo: boolean): DiscordMessage | null {
+export function formatMessageContent(content: RichText[], echo: boolean): DiscordMessage[] {
   if (echo || content.length > 1) {
-    const plain = content.map(richTextToPlainText).join("\n");
-    if (!plain) return null;
-    return codeBlock(plain);
+    const lines = content.map(richTextToPlainText);
+    const plain = lines.join("\n");
+    if (!plain) return [];
+    const chunks = splitLines(lines, SPLIT_THRESHOLD);
+    return chunks.map((chunk) => codeBlock(chunk.join("\n")));
   }
 
   const markdown = content.map(richTextToMarkdown).join("\n");
-  if (!markdown) return null;
-  return truncate(markdown);
+  if (!markdown) return [];
+  return [markdown];
 }
 
 /**
@@ -54,7 +62,7 @@ export function formatQuestion(event: {
 }): DiscordMessage {
   let text = codeBlock(event.question);
   text += formatOptions(event.options);
-  return truncate(text);
+  return text;
 }
 
 /**
@@ -73,7 +81,7 @@ export function formatPermissionRequired(event: {
     text += `\n${event.description}`;
   }
   text += formatOptions(event.options);
-  return truncate(text);
+  return text;
 }
 
 /**
@@ -85,6 +93,39 @@ export function formatPermissionRequired(event: {
  */
 export function appendContext(message: DiscordMessage, text: string): DiscordMessage {
   return `${message}\n> ${text}`;
+}
+
+/**
+ * Split lines into chunks where each chunk's joined plain text
+ * does not exceed `threshold` characters.
+ *
+ * Each line is kept intact — splitting only happens between lines.
+ * A single line that exceeds the threshold is placed in its own chunk.
+ *
+ * @param lines - Plain text lines to split
+ * @param threshold - Maximum character count per chunk
+ * @returns Array of line groups
+ */
+export function splitLines(lines: string[], threshold: number): string[][] {
+  const chunks: string[][] = [];
+  let current: string[] = [];
+  let currentLen = 0;
+
+  for (const line of lines) {
+    const lineLen = line.length;
+    // +1 accounts for the newline separator between lines
+    const added = current.length === 0 ? lineLen : lineLen + 1;
+    if (current.length > 0 && currentLen + added > threshold) {
+      chunks.push(current);
+      current = [line];
+      currentLen = lineLen;
+    } else {
+      current.push(line);
+      currentLen += added;
+    }
+  }
+  if (current.length > 0) chunks.push(current);
+  return chunks;
 }
 
 /** Format numbered options as a string suffix. */
@@ -102,18 +143,9 @@ function formatOptions(options: { label: string; description?: string }[]): stri
   return text;
 }
 
-/** Wrap text in a Discord code block, truncating inner content to preserve closing fence. */
+/** Wrap text in a Discord code block. */
 function codeBlock(text: string): string {
-  const overhead = 8; // "```\n" (4) + "\n```" (4)
-  const innerLimit = DISCORD_CHAR_LIMIT - overhead;
-  let inner = text.length > innerLimit ? `${text.slice(0, innerLimit - 1)}…` : text;
   // Break triple-backtick sequences with a zero-width space to prevent closing the code block
-  inner = inner.replaceAll("```", "`\u200B``");
+  const inner = text.replaceAll("```", "`\u200B``");
   return `\`\`\`\n${inner}\n\`\`\``;
-}
-
-/** Truncate a message to fit within Discord's character limit. */
-function truncate(text: string): string {
-  if (text.length <= DISCORD_CHAR_LIMIT) return text;
-  return `${text.slice(0, DISCORD_CHAR_LIMIT - 1)}…`;
 }
