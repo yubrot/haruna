@@ -30,8 +30,8 @@ export interface PtyOptions {
   onResize?: (cols: number, rows: number) => void;
 }
 
-/** A handle to a running PTY session. */
-export interface PtySession {
+/** A handle to a running PTY child process. */
+export interface PtyHandle {
   /**
    * Write data directly to the PTY.
    *
@@ -63,9 +63,9 @@ export interface PtySession {
  * only `onData` receives output and no local terminal wiring is performed.
  *
  * @param options - Configuration for the PTY session
- * @returns A session handle with `write()`, `kill()`, and `exited`
+ * @returns A handle with `write()`, `kill()`, and `exited`
  */
-export function runPty(options: PtyOptions): PtySession {
+export function runPty(options: PtyOptions): PtyHandle {
   const { command, env, onData, onResize, passthrough = true } = options;
 
   let disposed = false;
