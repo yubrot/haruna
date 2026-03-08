@@ -312,7 +312,7 @@ Key considerations:
 - Check the current scene state to decide what key sequences are
   appropriate. For example, a "select" input only makes sense when a
   question or permission prompt is active.
-- Return `null` to decline — the gateway will skip the input silently.
+- Return `null` to decline — the session will skip the input silently.
 - Text input has C0 control characters pre-stripped by the framework
   (see `stripControlChars` in `src/scene/interface.ts`).
 

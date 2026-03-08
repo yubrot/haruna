@@ -50,7 +50,7 @@ export class CompositeScene implements Scene {
   }
 
   /**
-   * Top-level orchestration for callers (Gateway, dump).
+   * Top-level orchestration for callers (Session, dump).
    *
    * Runs continuation + preemption if an active scene exists, then falls
    * through to clean detection. NOT part of the Scene interface.

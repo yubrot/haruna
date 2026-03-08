@@ -29,14 +29,14 @@ inject input back into the PTY.
                     │                    │
                   Scene                  │
        Scene Events ↓↑ (encodeInput)     │
-                 Gateway ────────────────┘
+                 Session ────────────────┘
               Frame ↓↑ Scene Inputs
          Channels (Discord, Browser, …)
 ```
 
 The two key extension points are **Scene** and **Channel** — both are
 interfaces, and haruna connects any combination of them agnostically.
-**Gateway** orchestrates them: it feeds snapshots through scenes to
+**Session** orchestrates them: it feeds snapshots through scenes to
 produce events (output path) and routes channel input through the active
 scene's `encodeInput` to produce PTY bytes (input path).
 
@@ -51,7 +51,7 @@ user-provided `.ts` files and hot-reloaded at runtime.
 ### Channel — Pluggable I/O Bridge
 
 A Channel is a bidirectional I/O interface. It receives `{ snapshot, events }`
-on screen changes and can send structured input back through the Gateway.
+on screen changes and can send structured input back through the Session.
 
 # `haruna [exec] [--] <command>`
 

@@ -1,15 +1,15 @@
 import { describe, test } from "bun:test";
 import { Attacher } from "./attacher.ts";
 import { Config, parseConfig } from "./config.ts";
-import { Gateway } from "./gateway.ts";
+import { Session } from "./session.ts";
 
 describe("Attacher", () => {
-  test("start attaches channels to gateway and stop removes them", async () => {
-    const gateway = new Gateway();
+  test("start attaches channels to session and stop removes them", async () => {
+    const session = new Session();
     const cwd = process.cwd();
     const config = new Config(parseConfig({ channels: [] }), null, cwd);
 
-    const attacher = new Attacher(gateway, {
+    const attacher = new Attacher(session, {
       config,
       sceneConfig: { _mode: "exec", _command: ["echo", "test"] },
       channelConfig: { _mode: "exec", _command: ["echo", "test"] },
@@ -17,8 +17,8 @@ describe("Attacher", () => {
 
     await attacher.start();
 
-    // With empty channels config, gateway should work but have no channels
-    gateway.update({
+    // With empty channels config, session should work but have no channels
+    session.update({
       timestamp: Date.now(),
       cols: 80,
       rows: 24,
@@ -32,7 +32,7 @@ describe("Attacher", () => {
   });
 
   test("replay mode excludes dump channels", async () => {
-    const gateway = new Gateway();
+    const session = new Session();
     const cwd = process.cwd();
     const config = new Config(
       parseConfig({
@@ -42,7 +42,7 @@ describe("Attacher", () => {
       cwd,
     );
 
-    const attacher = new Attacher(gateway, {
+    const attacher = new Attacher(session, {
       config,
       sceneConfig: { _mode: "replay", _command: [] },
       channelConfig: { _mode: "replay", _command: [] },

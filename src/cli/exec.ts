@@ -6,8 +6,8 @@
 
 import { Attacher } from "../attacher.ts";
 import type { Config } from "../config.ts";
-import { Gateway } from "../gateway.ts";
 import { type PtySession, runPty } from "../pty/index.ts";
+import { Session } from "../session.ts";
 import { VirtualTerminal } from "../vt/index.ts";
 
 /**
@@ -18,12 +18,12 @@ import { VirtualTerminal } from "../vt/index.ts";
  * @returns The child process exit code
  */
 export async function runExec(command: string[], config: Config): Promise<number> {
-  let session: PtySession | null = null;
+  let ptySession: PtySession | null = null;
 
-  const gateway = new Gateway({
-    write: (bytes) => session?.write(bytes),
+  const session = new Session({
+    write: (bytes) => ptySession?.write(bytes),
   });
-  const attacher = new Attacher(gateway, {
+  const attacher = new Attacher(session, {
     config,
     sceneConfig: { _mode: "exec", _command: command },
     channelConfig: { _mode: "exec", _command: command },
@@ -40,10 +40,10 @@ export async function runExec(command: string[], config: Config): Promise<number
     scrollback: config.terminal.scrollback,
     debounceMs: config.terminal.debounceMs,
     maxIntervalMs: config.terminal.maxIntervalMs,
-    onChange: (snapshot) => gateway.update(snapshot),
+    onChange: (snapshot) => session.update(snapshot),
   });
 
-  session = runPty({
+  ptySession = runPty({
     command,
     ...size,
     onData: (data) => vt.write(data),
@@ -52,7 +52,7 @@ export async function runExec(command: string[], config: Config): Promise<number
 
   let exitCode = 1;
   try {
-    exitCode = await session.exited;
+    exitCode = await ptySession.exited;
     await vt.flush();
   } catch (e) {
     console.error(`[haruna] ${e instanceof Error ? e.message : e}`);

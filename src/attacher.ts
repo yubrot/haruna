@@ -1,5 +1,5 @@
 /**
- * Attacher — wires scenes and channels onto a {@link Gateway} based on
+ * Attacher — wires scenes and channels onto a {@link Session} based on
  * {@link Config}, and manages hot-reload when the config or scene files change.
  *
  * @module
@@ -7,9 +7,9 @@
 
 import { type ChannelConfig, loadChannels } from "./channel/loader.ts";
 import type { Config, ResolvedSceneEntries } from "./config.ts";
-import type { Gateway } from "./gateway.ts";
 import type { Scene, SceneConfig } from "./scene/interface.ts";
 import { loadScenes } from "./scene/loader.ts";
+import type { Session } from "./session.ts";
 import { computeChecksum, FileWatch } from "./util/file.ts";
 
 /** Options for creating an {@link Attacher}. */
@@ -23,7 +23,7 @@ export interface AttachOptions {
 }
 
 /**
- * Attach scenes and channels to a {@link Gateway} based on configuration.
+ * Attach scenes and channels to a {@link Session} based on configuration.
  *
  * Handles scene loading, channel construction and startup, and file
  * watching for hot-reload. Uses {@link FileWatch} to monitor the config
@@ -34,15 +34,15 @@ export interface AttachOptions {
  * session ends.
  */
 export class Attacher {
-  private readonly gateway: Gateway;
+  private readonly session: Session;
   private readonly options: AttachOptions;
   private readonly fileWatch: FileWatch;
   private config: Config | null = null;
   private reloading = false;
   private scenesCache: [key: string, scenes: Scene[]] | null = null;
 
-  constructor(gateway: Gateway, options: AttachOptions) {
-    this.gateway = gateway;
+  constructor(session: Session, options: AttachOptions) {
+    this.session = session;
     this.options = options;
     this.fileWatch = new FileWatch(() => {
       void this.reload();
@@ -59,11 +59,11 @@ export class Attacher {
   }
 
   /**
-   * Stop all channels attached to the gateway and close all file watchers.
+   * Stop all channels attached to the session and close all file watchers.
    */
   async stop(): Promise<void> {
     this.fileWatch.close();
-    await this.gateway.replaceChannels([]);
+    await this.session.replaceChannels([]);
   }
 
   /**
@@ -105,7 +105,7 @@ export class Attacher {
 
     if (this.scenesCache?.[0] !== cacheKey) {
       const scenes = await loadScenes(resolved, sceneConfig);
-      this.gateway.replaceScenes(scenes);
+      this.session.replaceScenes(scenes);
       this.scenesCache = [cacheKey, scenes];
     }
 
@@ -115,7 +115,7 @@ export class Attacher {
       JSON.stringify(newConfig.channels) !== JSON.stringify(this.config.channels)
     ) {
       const newChannels = loadChannels(newConfig.channels, channelConfig);
-      await this.gateway.replaceChannels(newChannels);
+      await this.session.replaceChannels(newChannels);
     }
 
     // File watchers

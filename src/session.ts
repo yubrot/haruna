@@ -1,5 +1,5 @@
 /**
- * Gateway — processes VT snapshots through scene recognition and
+ * Session — processes VT snapshots through scene recognition and
  * propagates output to channels.
  *
  * @module
@@ -12,13 +12,13 @@ import { SequentialQueue } from "./util/async.ts";
 import type { Snapshot } from "./vt/snapshot.ts";
 
 /**
- * Snapshot processing and channel propagation gateway.
+ * Snapshot processing and channel propagation session.
  *
  * Combines {@link CompositeScene} with a set of {@link Channel}s.
- * Each call to {@link Gateway.update | update} feeds a snapshot through the scene engine
+ * Each call to {@link Session.update | update} feeds a snapshot through the scene engine
  * and delivers the resulting output batch to all channels.
  */
-export class Gateway {
+export class Session {
   private composite?: CompositeScene;
   private channels: Channel[] = [];
   private lastSnapshot: Snapshot | null = null;
@@ -27,7 +27,7 @@ export class Gateway {
   private readonly sendQueue: SequentialQueue;
 
   /**
-   * Create a new Gateway.
+   * Create a new Session.
    *
    * @param options - Optional write callback for PTY injection
    */

@@ -21,7 +21,7 @@ Default to using Bun instead of Node.js.
 | **VirtualTerminal** | `src/vt/`        | VT emulator → `Snapshot` on change  |
 | **Scene**           | `src/scene/`     | Snapshot → semantic events          |
 | **Channels**        | `src/channel/`   | Bidirectional I/O bridges           |
-| **Gateway**         | `src/gateway.ts` | Orchestrates Scene ↔ Channel flow   |
+| **Session**         | `src/session.ts` | Orchestrates Scene ↔ Channel flow   |
 
 # Code Style
 

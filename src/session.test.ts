@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Channel } from "./channel/interface.ts";
-import { Gateway } from "./gateway.ts";
 import type { InputAction, Scene, SceneContinuation, SceneInput } from "./scene/interface.ts";
+import { Session } from "./session.ts";
 import type { Snapshot } from "./vt/snapshot.ts";
 
 /** Minimal no-op snapshot for testing. */
@@ -42,10 +42,10 @@ function stubScene(actions: InputAction[] | InputAction | null): Scene {
   };
 }
 
-describe("Gateway.send", () => {
+describe("Session.send", () => {
   test("writes scene-encoded string action to PTY", async () => {
     const written: string[] = [];
-    const gw = new Gateway({ write: (b) => written.push(b) });
+    const gw = new Session({ write: (b) => written.push(b) });
     gw.replaceScenes([stubScene("hello\r")]);
     gw.update(dummySnapshot);
 
@@ -60,7 +60,7 @@ describe("Gateway.send", () => {
   test("executes InputAction array with sleep between writes", async () => {
     const written: string[] = [];
     const timestamps: number[] = [];
-    const gw = new Gateway({
+    const gw = new Session({
       write: (b) => {
         written.push(b);
         timestamps.push(Date.now());
@@ -82,7 +82,7 @@ describe("Gateway.send", () => {
 
   test("falls back to content + CR for text input", async () => {
     const written: string[] = [];
-    const gw = new Gateway({ write: (b) => written.push(b) });
+    const gw = new Session({ write: (b) => written.push(b) });
     // No scenes — triggers default fallback
     gw.update(dummySnapshot);
 
@@ -96,7 +96,7 @@ describe("Gateway.send", () => {
 
   test("falls back to bare CR for empty text input", async () => {
     const written: string[] = [];
-    const gw = new Gateway({ write: (b) => written.push(b) });
+    const gw = new Session({ write: (b) => written.push(b) });
     gw.update(dummySnapshot);
 
     const ch = stubChannel();
@@ -109,7 +109,7 @@ describe("Gateway.send", () => {
 
   test("ignores select input when no scene handles it", async () => {
     const written: string[] = [];
-    const gw = new Gateway({ write: (b) => written.push(b) });
+    const gw = new Session({ write: (b) => written.push(b) });
     gw.update(dummySnapshot);
 
     const ch = stubChannel();
@@ -121,7 +121,7 @@ describe("Gateway.send", () => {
   });
 
   test("does nothing when write is not provided", async () => {
-    const gw = new Gateway();
+    const gw = new Session();
     gw.update(dummySnapshot);
 
     const ch = stubChannel();
@@ -133,7 +133,7 @@ describe("Gateway.send", () => {
 
   test("handles single sleep action from scene", async () => {
     const written: string[] = [];
-    const gw = new Gateway({ write: (b) => written.push(b) });
+    const gw = new Session({ write: (b) => written.push(b) });
     gw.replaceScenes([stubScene({ sleep: 5 })]);
     gw.update(dummySnapshot);
 
@@ -147,7 +147,7 @@ describe("Gateway.send", () => {
 
   test("handles null from scene encodeInput (falls back to default)", async () => {
     const written: string[] = [];
-    const gw = new Gateway({ write: (b) => written.push(b) });
+    const gw = new Session({ write: (b) => written.push(b) });
     gw.replaceScenes([stubScene(null)]);
     gw.update(dummySnapshot);
 
