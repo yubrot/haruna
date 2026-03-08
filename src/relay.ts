@@ -3,14 +3,19 @@
  *
  * Processes snapshots through scene recognition (output path) and
  * routes channel input back through scenes to the PTY (input path).
+ * {@link RelayConfigurator} applies {@link Config} diffs to a Relay.
  *
  * @module
  */
 
 import type { Channel } from "./channel/interface.ts";
+import { type ChannelConfig, loadChannels } from "./channel/loader.ts";
+import type { Config, ResolvedSceneEntries } from "./config.ts";
 import { CompositeScene } from "./scene/builtin/composite.ts";
-import type { InputAction, Scene, SceneEvent, SceneInput } from "./scene/interface.ts";
+import type { InputAction, Scene, SceneConfig, SceneEvent, SceneInput } from "./scene/interface.ts";
+import { loadScenes } from "./scene/loader.ts";
 import { SequentialQueue } from "./util/async.ts";
+import { computeChecksum } from "./util/file.ts";
 import type { Snapshot } from "./vt/snapshot.ts";
 
 /**
@@ -22,7 +27,7 @@ import type { Snapshot } from "./vt/snapshot.ts";
  */
 export class Relay {
   private composite?: CompositeScene;
-  private channels: Channel[] = [];
+  private channels: Set<Channel> = new Set();
   private lastSnapshot: Snapshot | null = null;
   private prevIdle = false;
   private readonly write: ((bytes: string) => void) | null;
@@ -84,6 +89,7 @@ export class Relay {
    * Add channels to the relay.
    *
    * Each channel is started with a scene-aware `send` callback.
+   * Channels already present in the relay are silently skipped.
    *
    * @param channels - Channels to add
    */
@@ -91,6 +97,7 @@ export class Relay {
     const send = (input: SceneInput) => this.send(input);
     const started: Channel[] = [];
     for (const ch of channels) {
+      if (this.channels.has(ch)) continue;
       try {
         await ch.start(send);
         started.push(ch);
@@ -99,7 +106,7 @@ export class Relay {
         throw e;
       }
     }
-    this.channels.push(...started);
+    for (const ch of started) this.channels.add(ch);
   }
 
   /**
@@ -111,16 +118,21 @@ export class Relay {
    * @param channels - Channels to remove
    */
   async removeChannels(channels: Channel[]): Promise<void> {
-    const toRemove = new Set(channels);
     const removed: Channel[] = [];
-    this.channels = this.channels.filter((ch) => {
-      if (toRemove.has(ch)) {
-        removed.push(ch);
-        return false;
-      }
-      return true;
-    });
+    for (const ch of channels) {
+      if (this.channels.delete(ch)) removed.push(ch);
+    }
     await Promise.all(removed.map((ch) => ch.stop().catch(() => {})));
+  }
+
+  /**
+   * Stop all channels and clear all scenes.
+   */
+  async dispose(): Promise<void> {
+    const channels = [...this.channels];
+    this.channels.clear();
+    await Promise.all(channels.map((ch) => ch.stop().catch(() => {})));
+    this.composite = undefined;
   }
 
   /**
@@ -178,4 +190,101 @@ export class Relay {
       }
     }
   }
+}
+
+/** Options controlling how config is applied to a relay. */
+export interface RelayConfiguratorOptions {
+  /** Operating mode forwarded to scene/channel factories. */
+  mode: "exec" | "replay";
+  /** The command being executed. */
+  command: string[];
+}
+
+/**
+ * Applies configuration (scenes and channels) to a {@link Relay}.
+ *
+ * Scenes are reloaded only when the cache key changes. Channels are
+ * rebuilt only when their serialized config differs.
+ *
+ * Not safe for concurrent calls — callers must serialize invocations.
+ */
+export class RelayConfigurator {
+  private readonly relay: Relay;
+  private readonly options: RelayConfiguratorOptions;
+  private scenesCache: [key: string, scenes: Scene[]] | null = null;
+  private managedChannels: Channel[] = [];
+  private appliedConfig: Config | null = null;
+
+  constructor(relay: Relay, options: RelayConfiguratorOptions) {
+    this.relay = relay;
+    this.options = options;
+  }
+
+  /**
+   * Apply configuration on the relay.
+   *
+   * @param config - Configuration to apply
+   */
+  async apply(config: Config): Promise<void> {
+    const runtimeInfo = { _mode: this.options.mode, _command: this.options.command };
+    const sceneConfig: SceneConfig = { ...runtimeInfo };
+    const channelConfig: ChannelConfig = { ...runtimeInfo };
+
+    // Scenes
+    const resolved = await config.resolveSceneEntries();
+    const cacheKey = await computeSceneCacheKey(resolved);
+
+    if (this.scenesCache?.[0] !== cacheKey) {
+      const scenes = await loadScenes(resolved, sceneConfig);
+      this.relay.replaceScenes(scenes);
+      this.scenesCache = [cacheKey, scenes];
+    }
+
+    // Channels
+    if (
+      this.appliedConfig === null ||
+      JSON.stringify(config.channels) !== JSON.stringify(this.appliedConfig.channels)
+    ) {
+      const oldManaged = this.managedChannels;
+      this.managedChannels = [];
+      await this.relay.removeChannels(oldManaged);
+
+      const newChannels = loadChannels(config.channels, channelConfig);
+      await this.relay.addChannels(newChannels);
+      this.managedChannels = newChannels;
+    }
+
+    this.appliedConfig = config;
+  }
+}
+
+/**
+ * Compute a cache key that covers builtin names, file contents,
+ * and per-entry configuration properties.
+ */
+async function computeSceneCacheKey(resolved: ResolvedSceneEntries): Promise<string> {
+  const hasher = new Bun.CryptoHasher("sha256");
+
+  // Builtins (names + props)
+  for (const [name, props] of [...resolved.builtins.entries()].sort(([a], [b]) =>
+    a.localeCompare(b),
+  )) {
+    hasher.update(name);
+    if (Object.keys(props).length > 0) hasher.update(JSON.stringify(props));
+  }
+
+  // File contents + props
+  const filePaths = [...resolved.files.keys()].sort();
+  const fileChecksum = await computeChecksum(filePaths);
+  hasher.update(fileChecksum);
+  for (const [path, props] of [...resolved.files.entries()].sort(([a], [b]) =>
+    a.localeCompare(b),
+  )) {
+    if (Object.keys(props).length > 0) {
+      hasher.update(path);
+      hasher.update(JSON.stringify(props));
+    }
+  }
+
+  return hasher.digest("hex");
 }

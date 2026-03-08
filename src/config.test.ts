@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { useTempDir } from "./__testing.ts";
 import { Config, findConfigFile, interpolateEnvVars, parseConfig } from "./config.ts";
@@ -109,7 +109,22 @@ describe("Config", () => {
       const config = await Config.load(null, dir);
       expect(config.path).toBeNull();
       expect(config.terminal.scrollback).toBe(500);
+      expect(config.command).toBeUndefined();
+      expect(config.init).toBeUndefined();
+      expect(config.gateways).toEqual([]);
       expect(config.baseDir).toBe(dir);
+    });
+
+    test("loads command, init and gateways from a file", async () => {
+      const configPath = join(dir, ".haruna.yaml");
+      writeFileSync(
+        configPath,
+        "command: claude --verbose\ninit: ./init.sh\ngateways:\n  - type: web\n    port: 7800\n",
+      );
+      const config = await Config.load(configPath, dir);
+      expect(config.command).toBe("claude --verbose");
+      expect(config.init).toBe("./init.sh");
+      expect(config.gateways).toMatchObject([{ type: "web", port: 7800 }]);
     });
 
     test("sets baseDir to the provided value", async () => {
@@ -150,6 +165,48 @@ describe("Config", () => {
       const reloaded = await config.reload();
       expect(reloaded.baseDir).toBe(config.baseDir);
     });
+
+    test("applyInitOutput re-applies to reloaded config", async () => {
+      const scriptPath = join(dir, "init-reload.sh");
+      writeFileSync(scriptPath, '#!/bin/bash\necho "command: from-init"\n');
+      chmodSync(scriptPath, 0o755);
+
+      const configPath = join(dir, ".haruna.yml");
+      writeFileSync(configPath, `init: ${scriptPath}\nterminal:\n  scrollback: 100\n`);
+      const config = await Config.load(configPath, dir);
+
+      const initOutput = await config.runInit([]);
+      const resolved = config.applyInitOutput(initOutput);
+      expect(resolved.command).toBe("from-init");
+      expect(resolved.terminal.scrollback).toBe(100);
+
+      // Change config file — caller re-applies init output after reload
+      writeFileSync(configPath, `init: ${scriptPath}\nterminal:\n  scrollback: 200\n`);
+      const reloaded = (await config.reload()).applyInitOutput(initOutput);
+      expect(reloaded.command).toBe("from-init");
+      expect(reloaded.terminal.scrollback).toBe(200);
+      expect(reloaded.init).toBeUndefined();
+    });
+
+    test("reload returns unresolved config (init present)", async () => {
+      const scriptPath = join(dir, "init-reload2.sh");
+      writeFileSync(scriptPath, '#!/bin/bash\necho "command: stable"\n');
+      chmodSync(scriptPath, 0o755);
+
+      const configPath = join(dir, ".haruna.yml");
+      writeFileSync(configPath, `init: ${scriptPath}\n`);
+      const config = await Config.load(configPath, dir);
+
+      // reload always returns an unresolved config
+      const reloaded = await config.reload();
+      expect(reloaded.init).toBe(scriptPath);
+
+      // caller applies init output to produce a resolved config
+      const initOutput = await config.runInit([]);
+      const resolved = reloaded.applyInitOutput(initOutput);
+      expect(resolved.init).toBeUndefined();
+      expect(resolved.command).toBe("stable");
+    });
   });
 
   describe("parseConfig", () => {
@@ -159,6 +216,73 @@ describe("Config", () => {
         { type: "dump" },
         { type: "web", port: 0, host: "127.0.0.1" },
       ]);
+    });
+
+    test("accepts command as string (shell form)", () => {
+      const source = parseConfig({ command: "claude --verbose" });
+      expect(source.command).toBe("claude --verbose");
+    });
+
+    test("accepts command as array of strings (exec form)", () => {
+      const source = parseConfig({ command: ["claude", "--session-id", "my session"] });
+      expect(source.command).toEqual(["claude", "--session-id", "my session"]);
+    });
+
+    test("defaults command to undefined", () => {
+      const source = parseConfig({});
+      expect(source.command).toBeUndefined();
+    });
+
+    test("accepts init as string (shell form)", () => {
+      const source = parseConfig({ init: "./init.sh" });
+      expect(source.init).toBe("./init.sh");
+    });
+
+    test("accepts init as array of strings (exec form)", () => {
+      const source = parseConfig({ init: ["./init.sh", "--flag"] });
+      expect(source.init).toEqual(["./init.sh", "--flag"]);
+    });
+
+    test("defaults init to undefined", () => {
+      const source = parseConfig({});
+      expect(source.init).toBeUndefined();
+    });
+
+    test("accepts gateway string shorthand", () => {
+      const source = parseConfig({ gateways: ["web", "slack"] });
+      expect(source.gateways).toMatchObject([{ type: "web" }, { type: "slack" }]);
+    });
+
+    test("accepts gateway object with extra properties", () => {
+      const source = parseConfig({
+        gateways: [{ type: "slack", token: "xoxb-123" }],
+      });
+      expect(source.gateways).toMatchObject([{ type: "slack", token: "xoxb-123" }]);
+    });
+
+    test("defaults gateways to empty array", () => {
+      const source = parseConfig({});
+      expect(source.gateways).toEqual([]);
+    });
+
+    test("rejects non-string/array command", () => {
+      expect(() => parseConfig({ command: 123 })).toThrow();
+    });
+
+    test("rejects empty array command", () => {
+      expect(() => parseConfig({ command: [] })).toThrow();
+    });
+
+    test("rejects non-string/array init", () => {
+      expect(() => parseConfig({ init: true })).toThrow();
+    });
+
+    test("rejects empty array init", () => {
+      expect(() => parseConfig({ init: [] })).toThrow();
+    });
+
+    test("rejects non-array gateways", () => {
+      expect(() => parseConfig({ gateways: "web" })).toThrow();
     });
 
     test("rejects unknown channel name string", () => {
@@ -300,6 +424,131 @@ describe("Config", () => {
     test("does not include builtin scenes", async () => {
       const targets = await configWith(["builtin"]).fileWatchTargets();
       expect(targets).toEqual([]);
+    });
+  });
+
+  describe("runInit / applyInitOutput", () => {
+    function writeScript(name: string, content: string): string {
+      const path = join(dir, name);
+      writeFileSync(path, `#!/bin/bash\n${content}\n`);
+      chmodSync(path, 0o755);
+      return path;
+    }
+
+    test("runInit throws when init is not set", async () => {
+      const config = new Config(parseConfig({ command: "claude" }), null, dir);
+      await expect(config.runInit([])).rejects.toThrow("No init command configured");
+    });
+
+    test("merges init output with config", async () => {
+      const script = writeScript("init.sh", 'echo "command: overridden"');
+      const configPath = join(dir, ".haruna.yml");
+      writeFileSync(configPath, `init: ${script}\ncommand: original\n`);
+      const config = await Config.load(configPath, dir);
+
+      const initOutput = await config.runInit([]);
+      const resolved = config.applyInitOutput(initOutput);
+      expect(resolved.command).toBe("overridden");
+    });
+
+    test("clears init after applyInitOutput", async () => {
+      const script = writeScript("init-clear.sh", 'echo "command: resolved"');
+      const configPath = join(dir, ".haruna.yml");
+      writeFileSync(configPath, `init: ${script}\n`);
+      const config = await Config.load(configPath, dir);
+
+      const initOutput = await config.runInit([]);
+      const resolved = config.applyInitOutput(initOutput);
+      expect(resolved.init).toBeUndefined();
+    });
+
+    test("applyInitOutput preserves command when init outputs nothing", async () => {
+      const script = writeScript("noop.sh", "# no output");
+      const configPath = join(dir, ".haruna.yml");
+      writeFileSync(configPath, `init: ${script}\ncommand: claude\n`);
+      const config = await Config.load(configPath, dir);
+
+      const initOutput = await config.runInit([]);
+      const resolved = config.applyInitOutput(initOutput);
+      expect(resolved.command).toBe("claude");
+      expect(resolved.init).toBeUndefined();
+    });
+
+    test("passes args to the init command", async () => {
+      const script = writeScript("id-init.sh", 'echo "command: session-$1"');
+      const configPath = join(dir, ".haruna.yml");
+      writeFileSync(configPath, `init: ${script}\n`);
+      const config = await Config.load(configPath, dir);
+
+      const initOutput = await config.runInit(["myid", "abc123"]);
+      const resolved = config.applyInitOutput(initOutput);
+      expect(resolved.command).toBe("session-myid");
+    });
+
+    test("preserves non-command fields from base config", async () => {
+      const script = writeScript("init-preserve.sh", 'echo "command: from-init"');
+      const configPath = join(dir, ".haruna.yml");
+      writeFileSync(
+        configPath,
+        `init: ${script}\ncommand: original\nterminal:\n  cols: 120\n  scrollback: 1000\nchannels:\n  - dump\n`,
+      );
+      const config = await Config.load(configPath, dir);
+
+      const initOutput = await config.runInit([]);
+      const resolved = config.applyInitOutput(initOutput);
+      expect(resolved.command).toBe("from-init");
+      expect(resolved.terminal.cols).toBe(120);
+      expect(resolved.terminal.scrollback).toBe(1000);
+      expect(resolved.channels).toMatchObject([{ type: "dump" }]);
+    });
+
+    test("rejects unknown fields in init output", async () => {
+      const script = writeScript("init-unknown.sh", 'echo "channels:\n  - dump"');
+      const configPath = join(dir, ".haruna.yml");
+      writeFileSync(configPath, `init: ${script}\n`);
+      const config = await Config.load(configPath, dir);
+
+      await expect(config.runInit([])).rejects.toThrow();
+    });
+  });
+
+  describe("buildCommand", () => {
+    test("throws when init is still set", () => {
+      const config = new Config(parseConfig({ init: "./init.sh" }), null, "/tmp");
+      expect(() => config.buildCommand([])).toThrow(
+        "Config.applyInitOutput() must be called before buildCommand()",
+      );
+    });
+
+    test("undefined command with no args falls back to SHELL or /bin/sh", () => {
+      const config = new Config(parseConfig({}), null, "/tmp");
+      const result = config.buildCommand([]);
+      expect(result).toEqual([process.env.SHELL || "/bin/sh"]);
+    });
+
+    test("undefined command with args uses args as command", () => {
+      const config = new Config(parseConfig({}), null, "/tmp");
+      expect(config.buildCommand(["my-cmd", "--flag"])).toEqual(["my-cmd", "--flag"]);
+    });
+
+    test("string command with no args uses bash -c", () => {
+      const config = new Config(parseConfig({ command: "claude" }), null, "/tmp");
+      expect(config.buildCommand([])).toEqual(["bash", "-c", "claude"]);
+    });
+
+    test("string command with args appends shell-escaped args", () => {
+      const config = new Config(parseConfig({ command: "claude" }), null, "/tmp");
+      expect(config.buildCommand(["--verbose"])).toEqual(["bash", "-c", "claude '--verbose'"]);
+    });
+
+    test("array command with no args", () => {
+      const config = new Config(parseConfig({ command: ["claude", "--no-cache"] }), null, "/tmp");
+      expect(config.buildCommand([])).toEqual(["claude", "--no-cache"]);
+    });
+
+    test("array command with args appends directly", () => {
+      const config = new Config(parseConfig({ command: ["claude"] }), null, "/tmp");
+      expect(config.buildCommand(["--verbose"])).toEqual(["claude", "--verbose"]);
     });
   });
 });

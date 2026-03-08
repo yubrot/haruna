@@ -135,7 +135,11 @@ export class WebChannel implements Channel {
       `[haruna][${this.name}] listening on http://${this.options.host}:${this.server.port}`,
     );
 
-    return clientConnected;
+    if (this.options.waitForClient) {
+      console.error(`[haruna][${this.name}] waiting for client connection...`);
+      await clientConnected;
+      console.error(`[haruna][${this.name}] client connected`);
+    }
   }
 
   /**

@@ -55,10 +55,9 @@ program
   .option("-c, --config <path>", "path to config file")
   .argument("[command...]", "command and arguments to run")
   .passThroughOptions()
-  .action(async (command: string[], opts: { config?: string }) => {
-    const cmd = command.length > 0 ? command : [process.env.SHELL || "/bin/sh"];
+  .action(async (args: string[], opts: { config?: string }) => {
     const config = await loadConfig(opts.config);
-    process.exit(await runExec(cmd, config));
+    process.exit(await runExec(args, config));
   });
 
 // replay

@@ -1,6 +1,6 @@
 /**
- * Configuration file loading, schema validation, file discovery, and
- * scene entry resolution.
+ * Configuration file loading, schema validation, init resolution,
+ * command building, file discovery, and scene entry resolution.
  *
  * @module
  */
@@ -11,7 +11,14 @@ import * as v from "valibot";
 import { builtinSceneRegistry, expandBuiltinSceneAliases } from "./scene/builtin/registry.ts";
 import { expandGlobs } from "./util/file.ts";
 
+const GatewayEntrySchema = v.pipe(
+  v.union([v.string(), v.objectWithRest({ type: v.string() }, v.unknown())]),
+  v.transform((input) => (typeof input === "string" ? { type: input } : input)),
+);
+
 const ConfigSchema = v.object({
+  command: v.optional(v.union([v.string(), v.pipe(v.array(v.string()), v.minLength(1))])),
+  init: v.optional(v.union([v.string(), v.pipe(v.array(v.string()), v.minLength(1))])),
   terminal: v.optional(
     v.object({
       cols: v.optional(v.pipe(v.number(), v.integer(), v.minValue(1)), 80),
@@ -111,10 +118,24 @@ const ConfigSchema = v.object({
     ),
     [],
   ),
+  gateways: v.optional(v.array(GatewayEntrySchema), []),
 });
 
 /** Raw validated configuration from the schema. */
 type ConfigSource = v.InferOutput<typeof ConfigSchema>;
+
+const InitConfigSourceSchema = v.strictObject({
+  command: v.optional(v.union([v.string(), v.pipe(v.array(v.string()), v.minLength(1))])),
+});
+
+/**
+ * Output produced by an init command.
+ *
+ * Currently limited to `command` override only. Callers that run
+ * {@link Config.runInit} receive this value and can later pass it to
+ * {@link Config.applyInitOutput} to merge the overrides into a Config.
+ */
+export type InitOutput = v.InferOutput<typeof InitConfigSourceSchema>;
 
 /** Terminal emulator settings. */
 export type TerminalConfig = ConfigSource["terminal"];
@@ -124,6 +145,9 @@ export type SceneEntry = ConfigSource["scenes"][number];
 
 /** Channel entry — discriminated union on the `type` field. */
 export type ChannelEntry = ConfigSource["channels"][number];
+
+/** Gateway entry — object with `type` and arbitrary per-gateway properties. */
+export type GatewayEntry = ConfigSource["gateways"][number];
 
 /**
  * Immutable configuration object that encapsulates the config file path
@@ -139,19 +163,37 @@ export class Config {
    * Otherwise, it falls back to the working directory passed at load time.
    */
   readonly baseDir: string;
+  /**
+   * Command to run in the PTY.
+   *
+   * String form is executed via `bash -c`;
+   * array form is executed directly (exec form).
+   */
+  readonly command: string | string[] | undefined;
+  /**
+   * Init command, invoked once before session start.
+   *
+   * Present only on unresolved configs. After {@link resolve} this is `undefined`.
+   */
+  readonly init: string | string[] | undefined;
   /** Terminal emulator settings. */
   readonly terminal: TerminalConfig;
   /** Scene entries from configuration. */
   readonly scenes: SceneEntry[];
   /** Channel entries from configuration. */
   readonly channels: ChannelEntry[];
+  /** Gateway entries from configuration (used in multiplexing mode). */
+  readonly gateways: GatewayEntry[];
 
   constructor(source: ConfigSource, path: string | null, baseDir: string) {
     this.path = path;
     this.baseDir = baseDir;
+    this.command = source.command;
+    this.init = source.init;
     this.terminal = source.terminal;
     this.scenes = source.scenes;
     this.channels = source.channels;
+    this.gateways = source.gateways;
   }
 
   /**
@@ -173,10 +215,69 @@ export class Config {
   /**
    * Reload configuration from the same file path.
    *
+   * Returns a fresh, unresolved Config. Callers that need init output
+   * re-applied must call {@link applyInitOutput} with the stored output.
+   *
    * @returns A new Config instance with fresh data from disk
    */
   async reload(): Promise<Config> {
     return Config.load(this.path, this.baseDir);
+  }
+
+  /**
+   * Run the init command and return its output.
+   *
+   * The init command's stdout is parsed as YAML and validated.
+   * This method does not modify the Config — call {@link applyInitOutput}
+   * to merge the result.
+   *
+   * @param args - Arguments passed to the init command
+   * @returns Parsed init output
+   * @throws When no init command is configured, or the command fails
+   */
+  async runInit(args: string[]): Promise<InitOutput> {
+    if (!this.init) throw new Error("No init command configured");
+    return runInit(this.init, args, this.baseDir);
+  }
+
+  /**
+   * Apply init output overrides to this Config.
+   *
+   * Returns a new Config with `init` cleared and the init output merged.
+   *
+   * @param initOutput - Output from {@link runInit}
+   * @returns A new resolved Config
+   */
+  applyInitOutput(initOutput: InitOutput): Config {
+    const source: ConfigSource = {
+      command: initOutput.command ?? this.command,
+      init: undefined,
+      terminal: this.terminal,
+      scenes: this.scenes,
+      channels: this.channels,
+      gateways: this.gateways,
+    };
+    return new Config(source, this.path, this.baseDir);
+  }
+
+  /**
+   * Build an argv array from the `command` field and extra arguments.
+   *
+   * When `command` is set, `extraArgs` are appended. When `command` is
+   * unset, `extraArgs` are used as the command itself, falling back to
+   * `$SHELL` or `/bin/sh`.
+   *
+   * @param extraArgs - CLI arguments to append or use as fallback command
+   * @returns An argv array suitable for `Bun.spawn`
+   */
+  buildCommand(extraArgs: string[]): string[] {
+    if (this.init) {
+      throw new Error("Config.applyInitOutput() must be called before buildCommand()");
+    }
+    if (this.command === undefined) {
+      return extraArgs.length > 0 ? extraArgs : [process.env.SHELL || "/bin/sh"];
+    }
+    return buildCommand(this.command, extraArgs);
   }
 
   /**
@@ -299,6 +400,25 @@ export function parseConfig(raw: unknown): ConfigSource {
 }
 
 /**
+ * Build an argv array from a command/init config field and extra arguments.
+ *
+ * - String form: executed via `bash -c` with args shell-escaped and appended.
+ * - Array form: executed directly with args appended.
+ */
+function buildCommand(base: string | string[], args: string[]): string[] {
+  if (typeof base === "string") {
+    const fullCmd = args.length > 0 ? `${base} ${args.map(shellEscape).join(" ")}` : base;
+    return ["bash", "-c", fullCmd];
+  }
+  return [...base, ...args];
+}
+
+/** Escape a string for safe inclusion in a bash command line. */
+function shellEscape(arg: string): string {
+  return `'${arg.replace(/'/g, "'\\''")}'`;
+}
+
+/**
  * Expand `${VAR}` and `${VAR:default}` placeholders in raw YAML text.
  *
  * Applied before YAML parsing so that secrets (tokens, keys) can be
@@ -319,4 +439,33 @@ export function interpolateEnvVars(
     /\$\{([^}:]+)(?::([^}]*))?\}/g,
     (_match, name: string, fallback: string | undefined) => env[name] ?? fallback ?? "",
   );
+}
+
+/**
+ * Run an init command and parse its stdout as {@link InitOutput}.
+ *
+ * stderr is inherited (visible to the user).
+ * Throws if the command exits with a non-zero code.
+ */
+async function runInit(
+  initCommand: string | string[],
+  args: string[],
+  cwd: string,
+): Promise<InitOutput> {
+  const command = buildCommand(initCommand, args);
+  const proc = Bun.spawn(command, {
+    cwd,
+    stdout: "pipe",
+    stderr: "inherit",
+  });
+
+  const exitCode = await proc.exited;
+  if (exitCode !== 0) {
+    throw new Error(`init command exited with code ${exitCode}`);
+  }
+
+  const stdout = await new Response(proc.stdout).text();
+  if (!stdout.trim()) return {};
+
+  return v.parse(InitConfigSourceSchema, Bun.YAML.parse(stdout) ?? {});
 }
