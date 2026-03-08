@@ -14,10 +14,10 @@
 import { collectPlainLines, findLineAbove, type Snapshot } from "../../../vt/snapshot.ts";
 
 /** Separator line pattern (series of ─ characters). */
-const SEPARATOR = /^─{8,}$/;
+const SEPARATOR = /^─{16,}/;
 
 /** Content separator pattern (series of ╌ characters, used in plan and file preview). */
-const CONTENT_SEPARATOR = /^╌{8,}$/;
+const CONTENT_SEPARATOR = /^╌{16,}/;
 
 /** Input prompt pattern (❯ at the start of a line). */
 const INPUT_PROMPT = /^❯\s?(.*)/;
