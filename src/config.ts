@@ -180,6 +180,20 @@ export class Config {
   }
 
   /**
+   * Compute the file paths that should be watched for hot-reload.
+   *
+   * Returns the config file path (when present) plus all resolved
+   * scene file paths.
+   */
+  async fileWatchTargets(): Promise<string[]> {
+    const targets: string[] = [];
+    if (this.path) targets.push(this.path);
+    const resolved = await this.resolveSceneEntries();
+    targets.push(...resolved.files.keys());
+    return targets;
+  }
+
+  /**
    * Resolve scene entries against the builtin registry and filesystem.
    *
    * Builtin aliases are expanded via the registry. File globs are expanded

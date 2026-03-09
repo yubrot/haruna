@@ -23,7 +23,6 @@ import { Session } from "../session.ts";
 export async function runReplay(file: string, config: Config): Promise<number> {
   const session = new Session();
   const attacher = new Attacher(session, {
-    config,
     sceneConfig: { _mode: "replay", _command: [] },
     channelConfig: { _mode: "replay", _command: [] },
   });
@@ -33,7 +32,7 @@ export async function runReplay(file: string, config: Config): Promise<number> {
     console.error("[haruna] waiting for client connection...");
   }
 
-  await attacher.start();
+  await attacher.apply(config);
 
   if (hasChannels) {
     console.error("[haruna] client connected, starting replay");
@@ -51,7 +50,7 @@ export async function runReplay(file: string, config: Config): Promise<number> {
     console.error(`[haruna] ${e instanceof Error ? e.message : e}`);
     return 1;
   } finally {
-    await attacher.stop();
+    await attacher.apply(null);
   }
   return 0;
 }

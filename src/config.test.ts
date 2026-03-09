@@ -264,4 +264,42 @@ describe("Config", () => {
       expect([...result.files.keys()][0]).toEndWith("proj-scene.ts");
     });
   });
+
+  describe("fileWatchTargets", () => {
+    function configWith(scenes: unknown[], path: string | null = null, baseDir?: string): Config {
+      return new Config(parseConfig({ scenes }), path, baseDir ?? dir);
+    }
+
+    test("returns empty array when no config path and no scene files", async () => {
+      const targets = await configWith([]).fileWatchTargets();
+      expect(targets).toEqual([]);
+    });
+
+    test("includes config path when present", async () => {
+      const configPath = join(dir, ".haruna.yml");
+      writeFileSync(configPath, "scenes: []\n");
+      const targets = await configWith([], configPath).fileWatchTargets();
+      expect(targets).toContain(configPath);
+    });
+
+    test("includes resolved scene file paths", async () => {
+      const scenePath = writeScene(dir, "watch-scene.ts", "watch");
+      const targets = await configWith(["*.ts"]).fileWatchTargets();
+      expect(targets).toContain(scenePath);
+    });
+
+    test("includes both config path and scene files", async () => {
+      const configPath = join(dir, ".haruna.yml");
+      writeFileSync(configPath, "scenes: []\n");
+      const scenePath = writeScene(dir, "both-scene.ts", "both");
+      const targets = await configWith(["*.ts"], configPath).fileWatchTargets();
+      expect(targets).toContain(configPath);
+      expect(targets).toContain(scenePath);
+    });
+
+    test("does not include builtin scenes", async () => {
+      const targets = await configWith(["builtin"]).fileWatchTargets();
+      expect(targets).toEqual([]);
+    });
+  });
 });

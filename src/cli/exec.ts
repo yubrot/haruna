@@ -8,6 +8,7 @@ import { Attacher } from "../attacher.ts";
 import type { Config } from "../config.ts";
 import { type PtyHandle, runPty } from "../pty/index.ts";
 import { Session } from "../session.ts";
+import { FileWatch } from "../util/file.ts";
 import { VirtualTerminal } from "../vt/index.ts";
 
 /**
@@ -24,12 +25,24 @@ export async function runExec(command: string[], config: Config): Promise<number
     write: (bytes) => ptyHandle?.write(bytes),
   });
   const attacher = new Attacher(session, {
-    config,
     sceneConfig: { _mode: "exec", _command: command },
     channelConfig: { _mode: "exec", _command: command },
   });
 
-  await attacher.start();
+  // config.reload() always re-reads from the original config path,
+  // so we intentionally keep `config` pointing to the initial instance.
+  const fileWatch = new FileWatch(async () => {
+    try {
+      const reloaded = await config.reload();
+      await attacher.apply(reloaded);
+      fileWatch.update(await reloaded.fileWatchTargets());
+    } catch (e) {
+      console.error(`[haruna] config reload failed: ${e instanceof Error ? e.message : e}`);
+    }
+  });
+
+  await attacher.apply(config);
+  fileWatch.update(await config.fileWatchTargets());
 
   const size = process.stdout.isTTY
     ? { cols: process.stdout.columns, rows: process.stdout.rows }
@@ -57,7 +70,8 @@ export async function runExec(command: string[], config: Config): Promise<number
   } catch (e) {
     console.error(`[haruna] ${e instanceof Error ? e.message : e}`);
   } finally {
-    await attacher.stop();
+    fileWatch.close();
+    await attacher.apply(null);
     vt.dispose();
   }
   return exitCode;

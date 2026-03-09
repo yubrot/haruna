@@ -83,15 +83,24 @@ export async function computeChecksum(filePaths: string[]): Promise<string> {
  *
  * Supports incremental updates: calling {@link update} diffs the new path
  * set against the previous one and only adds/removes watchers as needed.
+ *
+ * The callback may be asynchronous. Concurrent invocations are coalesced:
+ * if a callback is already in flight, at most one additional invocation
+ * is queued and executed after the current one completes.
  */
 export class FileWatch {
-  private readonly onChange: () => void;
+  private readonly onChange: () => void | Promise<void>;
   private watchers: Map<string, FSWatcher> = new Map();
+  private running = false;
+  private pending = false;
+  private closed = false;
 
   /**
-   * @param onChange - Callback invoked when any watched file changes
+   * @param onChange - Callback invoked when any watched file changes.
+   *   When the callback returns a Promise, concurrent change events
+   *   are coalesced into a single trailing invocation.
    */
-  constructor(onChange: () => void) {
+  constructor(onChange: () => void | Promise<void>) {
     this.onChange = onChange;
   }
 
@@ -118,7 +127,7 @@ export class FileWatch {
       if (!this.watchers.has(path)) {
         try {
           const watcher = watch(path, () => {
-            this.onChange();
+            void this.invoke();
           });
           watcher.on("error", () => {
             // File may have been deleted after watch started; silently remove
@@ -132,11 +141,35 @@ export class FileWatch {
     }
   }
 
-  /** Close all watchers. */
+  /** Close all watchers. No further callbacks will be invoked. */
   close(): void {
+    this.closed = true;
     for (const watcher of this.watchers.values()) {
       watcher.close();
     }
     this.watchers.clear();
+  }
+
+  private async invoke(): Promise<void> {
+    if (this.closed) return;
+    if (this.running) {
+      this.pending = true;
+      return;
+    }
+    this.running = true;
+    try {
+      do {
+        this.pending = false;
+        try {
+          await this.onChange();
+        } catch (e) {
+          console.error(
+            `[haruna] file watch callback failed: ${e instanceof Error ? e.message : e}`,
+          );
+        }
+      } while (this.pending && !this.closed);
+    } finally {
+      this.running = false;
+    }
   }
 }

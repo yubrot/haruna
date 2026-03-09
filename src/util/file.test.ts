@@ -269,6 +269,108 @@ describe("FileWatch", () => {
     expect(called).toBe(false);
   });
 
+  test("coalesces events during async callback into a trailing invocation", async () => {
+    let invocations = 0;
+    let resolver: { fn?: () => void } = {};
+
+    const fw = new FileWatch(async () => {
+      invocations++;
+      // Block until test signals completion
+      await new Promise<void>((r) => {
+        resolver.fn = r;
+      });
+    });
+    watches.push(fw);
+
+    const file = join(dir, "coalesce.txt");
+    writeFileSync(file, "v0");
+    fw.update([file]);
+
+    // Trigger the first callback
+    writeFileSync(file, "v1");
+    await waitFor(() => resolver.fn !== undefined);
+    expect(invocations).toBe(1);
+
+    // File changes while callback is in flight — should be coalesced
+    writeFileSync(file, "v2");
+    writeFileSync(file, "v3");
+    // Allow OS events to propagate
+    await Bun.sleep(100);
+
+    // Complete first callback; the pending flag should trigger a second run
+    resolver.fn?.();
+    resolver = {};
+    await waitFor(() => resolver.fn !== undefined);
+    expect(invocations).toBe(2);
+
+    // Complete second callback
+    resolver.fn?.();
+    resolver = {};
+    // No more pending — should stay at 2
+    await expectNotCalled(() => invocations > 2, 200);
+    expect(invocations).toBe(2);
+  });
+
+  test("close prevents pending callback from running", async () => {
+    let invocations = 0;
+    let resolver: { fn?: () => void } = {};
+
+    const fw = new FileWatch(async () => {
+      invocations++;
+      await new Promise<void>((r) => {
+        resolver.fn = r;
+      });
+    });
+    watches.push(fw);
+
+    const file = join(dir, "close-pending.txt");
+    writeFileSync(file, "v0");
+    fw.update([file]);
+
+    // Trigger first callback
+    writeFileSync(file, "v1");
+    await waitFor(() => resolver.fn !== undefined);
+
+    // Queue a pending change then close
+    writeFileSync(file, "v2");
+    await Bun.sleep(100);
+    fw.close();
+
+    // Complete the in-flight callback
+    resolver.fn?.();
+    resolver = {};
+    await Bun.sleep(100);
+
+    // The pending callback should NOT have run
+    expect(invocations).toBe(1);
+  });
+
+  test("continues pending invocation after callback throws", async () => {
+    let invocations = 0;
+    let shouldThrow = true;
+    const fw = new FileWatch(async () => {
+      invocations++;
+      if (shouldThrow) {
+        shouldThrow = false;
+        throw new Error("boom");
+      }
+    });
+    watches.push(fw);
+
+    const file = join(dir, "throw.txt");
+    writeFileSync(file, "v0");
+    fw.update([file]);
+
+    // Trigger first callback (will throw)
+    writeFileSync(file, "v1");
+    await waitFor(() => invocations >= 1);
+
+    // File changes after the error — pending should still be processed
+    writeFileSync(file, "v2");
+    await waitFor(() => invocations >= 2);
+    expect(invocations).toBe(2);
+  });
+
   test("update with empty array clears all watchers", async () => {
     const file = join(dir, "test.txt");
     writeFileSync(file, "initial");

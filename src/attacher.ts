@@ -1,6 +1,6 @@
 /**
  * Attacher — wires scenes and channels onto a {@link Session} based on
- * {@link Config}, and manages hot-reload when the config or scene files change.
+ * {@link Config}.
  *
  * @module
  */
@@ -10,12 +10,10 @@ import type { Config, ResolvedSceneEntries } from "./config.ts";
 import type { Scene, SceneConfig } from "./scene/interface.ts";
 import { loadScenes } from "./scene/loader.ts";
 import type { Session } from "./session.ts";
-import { computeChecksum, FileWatch } from "./util/file.ts";
+import { computeChecksum } from "./util/file.ts";
 
 /** Options for creating an {@link Attacher}. */
 export interface AttachOptions {
-  /** The current haruna configuration. */
-  config: Config;
   /** Configuration passed to scene factories during initialization. */
   sceneConfig: SceneConfig;
   /** Configuration passed to channel constructors during initialization. */
@@ -25,67 +23,18 @@ export interface AttachOptions {
 /**
  * Attach scenes and channels to a {@link Session} based on configuration.
  *
- * Handles scene loading, channel construction and startup, and file
- * watching for hot-reload. Uses {@link FileWatch} to monitor the config
- * file and dynamically loaded scene files. On any change the entire config
- * is re-loaded and diffs are applied.
- *
- * Call {@link start} once after construction, and {@link stop} when the
- * session ends.
+ * Call {@link apply} with a {@link Config} to load scenes and channels,
+ * and with `null` to detach everything.
  */
 export class Attacher {
   private readonly session: Session;
   private readonly options: AttachOptions;
-  private readonly fileWatch: FileWatch;
   private config: Config | null = null;
-  private reloading = false;
   private scenesCache: [key: string, scenes: Scene[]] | null = null;
 
   constructor(session: Session, options: AttachOptions) {
     this.session = session;
     this.options = options;
-    this.fileWatch = new FileWatch(() => {
-      void this.reload();
-    });
-  }
-
-  /**
-   * Load scenes, build and start channels, and begin watching files
-   * for changes (config file when a config path is present, plus
-   * dynamically loaded scene files).
-   */
-  async start(): Promise<void> {
-    await this.apply(this.options.config);
-  }
-
-  /**
-   * Stop all channels attached to the session and close all file watchers.
-   */
-  async stop(): Promise<void> {
-    this.fileWatch.close();
-    await this.session.replaceChannels([]);
-  }
-
-  /**
-   * Reload the config from disk and apply diffs.
-   *
-   * Guards against concurrent reloads. Changes that arrive while a
-   * reload is already in flight are silently dropped.
-   *
-   * TODO: Track a `pendingReload` flag so that changes during an
-   * in-flight reload are re-applied once the current cycle finishes.
-   */
-  private async reload(): Promise<void> {
-    if (this.reloading) return;
-    this.reloading = true;
-
-    try {
-      await this.apply(await this.options.config.reload());
-    } catch (e) {
-      console.error(`[haruna] config reload failed: ${e instanceof Error ? e.message : e}`);
-    } finally {
-      this.reloading = false;
-    }
   }
 
   /**
@@ -93,14 +42,26 @@ export class Attacher {
    *
    * Scenes are reloaded only when the cache key changes. Channels are
    * rebuilt only when their serialized config differs.
+   *
+   * Pass `null` to detach all scenes and channels (teardown).
+   *
+   * Not safe for concurrent calls — callers must serialize invocations.
+   *
+   * @param newConfig - Configuration to apply, or `null` to detach
    */
-  private async apply(newConfig: Config): Promise<void> {
+  async apply(newConfig: Config | null): Promise<void> {
+    if (newConfig === null) {
+      await this.session.replaceChannels([]);
+      this.session.replaceScenes();
+      this.scenesCache = null;
+      this.config = null;
+      return;
+    }
+
     const { sceneConfig, channelConfig } = this.options;
-    const fileWatchTargets: string[] = [];
 
     // Scenes
     const resolved = await newConfig.resolveSceneEntries();
-    const sceneFilePaths = [...resolved.files.keys()];
     const cacheKey = await computeSceneCacheKey(resolved);
 
     if (this.scenesCache?.[0] !== cacheKey) {
@@ -117,11 +78,6 @@ export class Attacher {
       const newChannels = loadChannels(newConfig.channels, channelConfig);
       await this.session.replaceChannels(newChannels);
     }
-
-    // File watchers
-    if (newConfig.path) fileWatchTargets.push(newConfig.path);
-    fileWatchTargets.push(...sceneFilePaths);
-    this.fileWatch.update(fileWatchTargets);
 
     this.config = newConfig;
   }

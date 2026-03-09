@@ -4,18 +4,17 @@ import { Config, parseConfig } from "./config.ts";
 import { Session } from "./session.ts";
 
 describe("Attacher", () => {
-  test("start attaches channels to session and stop removes them", async () => {
+  test("apply attaches channels and apply(null) removes them", async () => {
     const session = new Session();
     const cwd = process.cwd();
     const config = new Config(parseConfig({ channels: [] }), null, cwd);
 
     const attacher = new Attacher(session, {
-      config,
       sceneConfig: { _mode: "exec", _command: ["echo", "test"] },
       channelConfig: { _mode: "exec", _command: ["echo", "test"] },
     });
 
-    await attacher.start();
+    await attacher.apply(config);
 
     // With empty channels config, session should work but have no channels
     session.update({
@@ -28,7 +27,7 @@ describe("Attacher", () => {
       linesOffset: 0,
     });
 
-    await attacher.stop();
+    await attacher.apply(null);
   });
 
   test("replay mode excludes dump channels", async () => {
@@ -43,13 +42,12 @@ describe("Attacher", () => {
     );
 
     const attacher = new Attacher(session, {
-      config,
       sceneConfig: { _mode: "replay", _command: [] },
       channelConfig: { _mode: "replay", _command: [] },
     });
 
-    await attacher.start();
+    await attacher.apply(config);
     // No error — dump channel was simply excluded
-    await attacher.stop();
+    await attacher.apply(null);
   });
 });
