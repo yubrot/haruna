@@ -67,9 +67,9 @@ export class Session {
    *
    * @param scenes - The new scene definitions
    */
-  replaceScenes(scenes?: Scene[]): void {
+  replaceScenes(scenes: Scene[]): void {
     const prevState = this.composite?.state ?? null;
-    this.composite = scenes?.length ? new CompositeScene(scenes) : undefined;
+    this.composite = scenes.length ? new CompositeScene(scenes) : undefined;
     this.prevIdle = false;
 
     // Notify channels if the active scene was cleared
@@ -79,20 +79,13 @@ export class Session {
   }
 
   /**
-   * Replace all channels with a new set.
+   * Add channels to the session.
    *
-   * Stops the old channels first to release resources (e.g. bound ports),
-   * then starts the new channels with a scene-aware `send` callback
-   * when a `write` function was given at construction.
+   * Each channel is started with a scene-aware `send` callback.
    *
-   * @param channels - The new channels
+   * @param channels - Channels to add
    */
-  async replaceChannels(channels: Channel[]): Promise<void> {
-    // TODO: How to handle concurrent `replaceChannels` calls?
-    const old = this.channels;
-    this.channels = [];
-    await Promise.all(old.map((ch) => ch.stop().catch(() => {})));
-
+  async addChannels(channels: Channel[]): Promise<void> {
     const send = (input: SceneInput) => this.send(input);
     const started: Channel[] = [];
     for (const ch of channels) {
@@ -100,12 +93,32 @@ export class Session {
         await ch.start(send);
         started.push(ch);
       } catch (e) {
-        // Roll back already-started channels
         await Promise.all(started.map((s) => s.stop().catch(() => {})));
         throw e;
       }
     }
-    this.channels = started;
+    this.channels.push(...started);
+  }
+
+  /**
+   * Remove channels from the session.
+   *
+   * Each channel is stopped and removed from the internal list.
+   * Channels not present in the session are silently ignored.
+   *
+   * @param channels - Channels to remove
+   */
+  async removeChannels(channels: Channel[]): Promise<void> {
+    const toRemove = new Set(channels);
+    const removed: Channel[] = [];
+    this.channels = this.channels.filter((ch) => {
+      if (toRemove.has(ch)) {
+        removed.push(ch);
+        return false;
+      }
+      return true;
+    });
+    await Promise.all(removed.map((ch) => ch.stop().catch(() => {})));
   }
 
   /**

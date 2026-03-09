@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { Channel } from "./channel/interface.ts";
+import type { Channel, Frame } from "./channel/interface.ts";
 import type { InputAction, Scene, SceneContinuation, SceneInput } from "./scene/interface.ts";
 import { Session } from "./session.ts";
 import type { Snapshot } from "./vt/snapshot.ts";
@@ -50,7 +50,7 @@ describe("Session.send", () => {
     gw.update(dummySnapshot);
 
     const ch = stubChannel();
-    await gw.replaceChannels([ch]);
+    await gw.addChannels([ch]);
     ch.sendInput({ type: "text", content: "ignored" });
 
     await gw.flush();
@@ -70,7 +70,7 @@ describe("Session.send", () => {
     gw.update(dummySnapshot);
 
     const ch = stubChannel();
-    await gw.replaceChannels([ch]);
+    await gw.addChannels([ch]);
     ch.sendInput({ type: "text", content: "x" });
 
     await gw.flush();
@@ -87,7 +87,7 @@ describe("Session.send", () => {
     gw.update(dummySnapshot);
 
     const ch = stubChannel();
-    await gw.replaceChannels([ch]);
+    await gw.addChannels([ch]);
     ch.sendInput({ type: "text", content: "hello" });
 
     await gw.flush();
@@ -100,7 +100,7 @@ describe("Session.send", () => {
     gw.update(dummySnapshot);
 
     const ch = stubChannel();
-    await gw.replaceChannels([ch]);
+    await gw.addChannels([ch]);
     ch.sendInput({ type: "text", content: "" });
 
     await gw.flush();
@@ -113,7 +113,7 @@ describe("Session.send", () => {
     gw.update(dummySnapshot);
 
     const ch = stubChannel();
-    await gw.replaceChannels([ch]);
+    await gw.addChannels([ch]);
     ch.sendInput({ type: "select", index: 0 });
 
     await gw.flush();
@@ -125,7 +125,7 @@ describe("Session.send", () => {
     gw.update(dummySnapshot);
 
     const ch = stubChannel();
-    await gw.replaceChannels([ch]);
+    await gw.addChannels([ch]);
     // Should not throw
     ch.sendInput({ type: "text", content: "hello" });
     await gw.flush();
@@ -138,7 +138,7 @@ describe("Session.send", () => {
     gw.update(dummySnapshot);
 
     const ch = stubChannel();
-    await gw.replaceChannels([ch]);
+    await gw.addChannels([ch]);
     ch.sendInput({ type: "text", content: "x" });
 
     await gw.flush();
@@ -152,10 +152,83 @@ describe("Session.send", () => {
     gw.update(dummySnapshot);
 
     const ch = stubChannel();
-    await gw.replaceChannels([ch]);
+    await gw.addChannels([ch]);
     ch.sendInput({ type: "text", content: "hi" });
 
     await gw.flush();
     expect(written).toEqual(["hi\r"]);
+  });
+});
+
+/** Create a channel that records received frames and stop calls. */
+function recordingChannel(name = "rec"): Channel & { frames: Frame[]; stopped: boolean } {
+  const frames: Frame[] = [];
+  return {
+    name,
+    frames,
+    stopped: false,
+    async start() {},
+    async stop() {
+      this.stopped = true;
+    },
+    receive(frame) {
+      frames.push(frame);
+    },
+  };
+}
+
+describe("Session.addChannels / removeChannels", () => {
+  test("addChannels makes channel receive subsequent updates", async () => {
+    const session = new Session();
+    const ch = recordingChannel();
+    await session.addChannels([ch]);
+
+    session.update(dummySnapshot);
+    expect(ch.frames.length).toBe(1);
+  });
+
+  test("removeChannels stops channel from receiving updates", async () => {
+    const session = new Session();
+    const ch = recordingChannel();
+    await session.addChannels([ch]);
+
+    session.update(dummySnapshot);
+    expect(ch.frames.length).toBe(1);
+
+    await session.removeChannels([ch]);
+    session.update(dummySnapshot);
+    expect(ch.frames.length).toBe(1);
+  });
+
+  test("removeChannels does not stop channels not in the session", async () => {
+    const session = new Session();
+    const ch1 = recordingChannel("ch1");
+    const ch2 = recordingChannel("ch2");
+
+    await session.addChannels([ch1]);
+    // ch2 was never added to this session
+    await session.removeChannels([ch2]);
+
+    expect(ch2.stopped).toBe(false);
+    session.update(dummySnapshot);
+    expect(ch1.frames.length).toBe(1);
+  });
+
+  test("add and remove do not interfere with other channels", async () => {
+    const session = new Session();
+    const ch1 = recordingChannel("ch1");
+    const ch2 = recordingChannel("ch2");
+
+    await session.addChannels([ch1]);
+    await session.addChannels([ch2]);
+
+    session.update(dummySnapshot);
+    expect(ch1.frames.length).toBe(1);
+    expect(ch2.frames.length).toBe(1);
+
+    await session.removeChannels([ch1]);
+    session.update(dummySnapshot);
+    expect(ch1.frames.length).toBe(1);
+    expect(ch2.frames.length).toBe(2);
   });
 });

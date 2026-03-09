@@ -5,6 +5,7 @@
  * @module
  */
 
+import type { Channel } from "./channel/interface.ts";
 import { type ChannelConfig, loadChannels } from "./channel/loader.ts";
 import type { Config, ResolvedSceneEntries } from "./config.ts";
 import type { Scene, SceneConfig } from "./scene/interface.ts";
@@ -31,6 +32,7 @@ export class Attacher {
   private readonly options: AttachOptions;
   private config: Config | null = null;
   private scenesCache: [key: string, scenes: Scene[]] | null = null;
+  private managedChannels: Channel[] = [];
 
   constructor(session: Session, options: AttachOptions) {
     this.session = session;
@@ -51,8 +53,10 @@ export class Attacher {
    */
   async apply(newConfig: Config | null): Promise<void> {
     if (newConfig === null) {
-      await this.session.replaceChannels([]);
-      this.session.replaceScenes();
+      const toRemove = this.managedChannels;
+      this.managedChannels = [];
+      await this.session.removeChannels(toRemove);
+      this.session.replaceScenes([]);
       this.scenesCache = null;
       this.config = null;
       return;
@@ -75,8 +79,13 @@ export class Attacher {
       this.config === null ||
       JSON.stringify(newConfig.channels) !== JSON.stringify(this.config.channels)
     ) {
+      const oldManaged = this.managedChannels;
+      this.managedChannels = [];
+      await this.session.removeChannels(oldManaged);
+
       const newChannels = loadChannels(newConfig.channels, channelConfig);
-      await this.session.replaceChannels(newChannels);
+      await this.session.addChannels(newChannels);
+      this.managedChannels = newChannels;
     }
 
     this.config = newConfig;

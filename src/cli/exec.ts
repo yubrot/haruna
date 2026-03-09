@@ -21,16 +21,12 @@ import { VirtualTerminal } from "../vt/index.ts";
 export async function runExec(command: string[], config: Config): Promise<number> {
   let ptyHandle: PtyHandle | null = null;
 
-  const session = new Session({
-    write: (bytes) => ptyHandle?.write(bytes),
-  });
+  const session = new Session({ write: (bytes) => ptyHandle?.write(bytes) });
   const attacher = new Attacher(session, {
     sceneConfig: { _mode: "exec", _command: command },
     channelConfig: { _mode: "exec", _command: command },
   });
 
-  // config.reload() always re-reads from the original config path,
-  // so we intentionally keep `config` pointing to the initial instance.
   const fileWatch = new FileWatch(async () => {
     try {
       const reloaded = await config.reload();
