@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Channel, Frame } from "./channel/interface.ts";
+import { Relay } from "./relay.ts";
 import type { InputAction, Scene, SceneContinuation, SceneInput } from "./scene/interface.ts";
-import { Session } from "./session.ts";
 import type { Snapshot } from "./vt/snapshot.ts";
 
 /** Minimal no-op snapshot for testing. */
@@ -42,10 +42,10 @@ function stubScene(actions: InputAction[] | InputAction | null): Scene {
   };
 }
 
-describe("Session.send", () => {
+describe("Relay.send", () => {
   test("writes scene-encoded string action to PTY", async () => {
     const written: string[] = [];
-    const gw = new Session({ write: (b) => written.push(b) });
+    const gw = new Relay({ write: (b) => written.push(b) });
     gw.replaceScenes([stubScene("hello\r")]);
     gw.update(dummySnapshot);
 
@@ -60,7 +60,7 @@ describe("Session.send", () => {
   test("executes InputAction array with sleep between writes", async () => {
     const written: string[] = [];
     const timestamps: number[] = [];
-    const gw = new Session({
+    const gw = new Relay({
       write: (b) => {
         written.push(b);
         timestamps.push(Date.now());
@@ -82,7 +82,7 @@ describe("Session.send", () => {
 
   test("falls back to content + CR for text input", async () => {
     const written: string[] = [];
-    const gw = new Session({ write: (b) => written.push(b) });
+    const gw = new Relay({ write: (b) => written.push(b) });
     // No scenes — triggers default fallback
     gw.update(dummySnapshot);
 
@@ -96,7 +96,7 @@ describe("Session.send", () => {
 
   test("falls back to bare CR for empty text input", async () => {
     const written: string[] = [];
-    const gw = new Session({ write: (b) => written.push(b) });
+    const gw = new Relay({ write: (b) => written.push(b) });
     gw.update(dummySnapshot);
 
     const ch = stubChannel();
@@ -109,7 +109,7 @@ describe("Session.send", () => {
 
   test("ignores select input when no scene handles it", async () => {
     const written: string[] = [];
-    const gw = new Session({ write: (b) => written.push(b) });
+    const gw = new Relay({ write: (b) => written.push(b) });
     gw.update(dummySnapshot);
 
     const ch = stubChannel();
@@ -121,7 +121,7 @@ describe("Session.send", () => {
   });
 
   test("does nothing when write is not provided", async () => {
-    const gw = new Session();
+    const gw = new Relay();
     gw.update(dummySnapshot);
 
     const ch = stubChannel();
@@ -133,7 +133,7 @@ describe("Session.send", () => {
 
   test("handles single sleep action from scene", async () => {
     const written: string[] = [];
-    const gw = new Session({ write: (b) => written.push(b) });
+    const gw = new Relay({ write: (b) => written.push(b) });
     gw.replaceScenes([stubScene({ sleep: 5 })]);
     gw.update(dummySnapshot);
 
@@ -147,7 +147,7 @@ describe("Session.send", () => {
 
   test("handles null from scene encodeInput (falls back to default)", async () => {
     const written: string[] = [];
-    const gw = new Session({ write: (b) => written.push(b) });
+    const gw = new Relay({ write: (b) => written.push(b) });
     gw.replaceScenes([stubScene(null)]);
     gw.update(dummySnapshot);
 
@@ -177,57 +177,57 @@ function recordingChannel(name = "rec"): Channel & { frames: Frame[]; stopped: b
   };
 }
 
-describe("Session.addChannels / removeChannels", () => {
+describe("Relay.addChannels / removeChannels", () => {
   test("addChannels makes channel receive subsequent updates", async () => {
-    const session = new Session();
+    const relay = new Relay();
     const ch = recordingChannel();
-    await session.addChannels([ch]);
+    await relay.addChannels([ch]);
 
-    session.update(dummySnapshot);
+    relay.update(dummySnapshot);
     expect(ch.frames.length).toBe(1);
   });
 
   test("removeChannels stops channel from receiving updates", async () => {
-    const session = new Session();
+    const relay = new Relay();
     const ch = recordingChannel();
-    await session.addChannels([ch]);
+    await relay.addChannels([ch]);
 
-    session.update(dummySnapshot);
+    relay.update(dummySnapshot);
     expect(ch.frames.length).toBe(1);
 
-    await session.removeChannels([ch]);
-    session.update(dummySnapshot);
+    await relay.removeChannels([ch]);
+    relay.update(dummySnapshot);
     expect(ch.frames.length).toBe(1);
   });
 
-  test("removeChannels does not stop channels not in the session", async () => {
-    const session = new Session();
+  test("removeChannels does not stop channels not in the relay", async () => {
+    const relay = new Relay();
     const ch1 = recordingChannel("ch1");
     const ch2 = recordingChannel("ch2");
 
-    await session.addChannels([ch1]);
-    // ch2 was never added to this session
-    await session.removeChannels([ch2]);
+    await relay.addChannels([ch1]);
+    // ch2 was never added to this relay
+    await relay.removeChannels([ch2]);
 
     expect(ch2.stopped).toBe(false);
-    session.update(dummySnapshot);
+    relay.update(dummySnapshot);
     expect(ch1.frames.length).toBe(1);
   });
 
   test("add and remove do not interfere with other channels", async () => {
-    const session = new Session();
+    const relay = new Relay();
     const ch1 = recordingChannel("ch1");
     const ch2 = recordingChannel("ch2");
 
-    await session.addChannels([ch1]);
-    await session.addChannels([ch2]);
+    await relay.addChannels([ch1]);
+    await relay.addChannels([ch2]);
 
-    session.update(dummySnapshot);
+    relay.update(dummySnapshot);
     expect(ch1.frames.length).toBe(1);
     expect(ch2.frames.length).toBe(1);
 
-    await session.removeChannels([ch1]);
-    session.update(dummySnapshot);
+    await relay.removeChannels([ch1]);
+    relay.update(dummySnapshot);
     expect(ch1.frames.length).toBe(1);
     expect(ch2.frames.length).toBe(2);
   });

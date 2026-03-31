@@ -1,5 +1,5 @@
 /**
- * Attacher — wires scenes and channels onto a {@link Session} based on
+ * Attacher — wires scenes and channels onto a {@link Relay} based on
  * {@link Config}.
  *
  * @module
@@ -8,9 +8,9 @@
 import type { Channel } from "./channel/interface.ts";
 import { type ChannelConfig, loadChannels } from "./channel/loader.ts";
 import type { Config, ResolvedSceneEntries } from "./config.ts";
+import type { Relay } from "./relay.ts";
 import type { Scene, SceneConfig } from "./scene/interface.ts";
 import { loadScenes } from "./scene/loader.ts";
-import type { Session } from "./session.ts";
 import { computeChecksum } from "./util/file.ts";
 
 /** Options for creating an {@link Attacher}. */
@@ -22,20 +22,20 @@ export interface AttachOptions {
 }
 
 /**
- * Attach scenes and channels to a {@link Session} based on configuration.
+ * Attach scenes and channels to a {@link Relay} based on configuration.
  *
  * Call {@link apply} with a {@link Config} to load scenes and channels,
  * and with `null` to detach everything.
  */
 export class Attacher {
-  private readonly session: Session;
+  private readonly relay: Relay;
   private readonly options: AttachOptions;
   private config: Config | null = null;
   private scenesCache: [key: string, scenes: Scene[]] | null = null;
   private managedChannels: Channel[] = [];
 
-  constructor(session: Session, options: AttachOptions) {
-    this.session = session;
+  constructor(relay: Relay, options: AttachOptions) {
+    this.relay = relay;
     this.options = options;
   }
 
@@ -55,8 +55,8 @@ export class Attacher {
     if (newConfig === null) {
       const toRemove = this.managedChannels;
       this.managedChannels = [];
-      await this.session.removeChannels(toRemove);
-      this.session.replaceScenes([]);
+      await this.relay.removeChannels(toRemove);
+      this.relay.replaceScenes([]);
       this.scenesCache = null;
       this.config = null;
       return;
@@ -70,7 +70,7 @@ export class Attacher {
 
     if (this.scenesCache?.[0] !== cacheKey) {
       const scenes = await loadScenes(resolved, sceneConfig);
-      this.session.replaceScenes(scenes);
+      this.relay.replaceScenes(scenes);
       this.scenesCache = [cacheKey, scenes];
     }
 
@@ -81,10 +81,10 @@ export class Attacher {
     ) {
       const oldManaged = this.managedChannels;
       this.managedChannels = [];
-      await this.session.removeChannels(oldManaged);
+      await this.relay.removeChannels(oldManaged);
 
       const newChannels = loadChannels(newConfig.channels, channelConfig);
-      await this.session.addChannels(newChannels);
+      await this.relay.addChannels(newChannels);
       this.managedChannels = newChannels;
     }
 

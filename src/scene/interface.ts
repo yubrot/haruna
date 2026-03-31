@@ -280,7 +280,7 @@ export function parseSceneInput(value: unknown): SceneInput | null {
 /**
  * Strip ASCII control characters (C0 range and DEL) except tab and newline.
  *
- * CR (`\r`) is also stripped — the session appends its own CR when
+ * CR (`\r`) is also stripped — the relay appends its own CR when
  * forwarding text input as a submit action.
  *
  * Prevents injection of sequences like Ctrl+C, ESC, or DEL into the PTY

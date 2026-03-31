@@ -1,23 +1,23 @@
 import { describe, test } from "bun:test";
 import { Attacher } from "./attacher.ts";
 import { Config, parseConfig } from "./config.ts";
-import { Session } from "./session.ts";
+import { Relay } from "./relay.ts";
 
 describe("Attacher", () => {
   test("apply attaches channels and apply(null) removes them", async () => {
-    const session = new Session();
+    const relay = new Relay();
     const cwd = process.cwd();
     const config = new Config(parseConfig({ channels: [] }), null, cwd);
 
-    const attacher = new Attacher(session, {
+    const attacher = new Attacher(relay, {
       sceneConfig: { _mode: "exec", _command: ["echo", "test"] },
       channelConfig: { _mode: "exec", _command: ["echo", "test"] },
     });
 
     await attacher.apply(config);
 
-    // With empty channels config, session should work but have no channels
-    session.update({
+    // With empty channels config, relay should work but have no channels
+    relay.update({
       timestamp: Date.now(),
       cols: 80,
       rows: 24,
@@ -31,7 +31,7 @@ describe("Attacher", () => {
   });
 
   test("replay mode excludes dump channels", async () => {
-    const session = new Session();
+    const relay = new Relay();
     const cwd = process.cwd();
     const config = new Config(
       parseConfig({
@@ -41,7 +41,7 @@ describe("Attacher", () => {
       cwd,
     );
 
-    const attacher = new Attacher(session, {
+    const attacher = new Attacher(relay, {
       sceneConfig: { _mode: "replay", _command: [] },
       channelConfig: { _mode: "replay", _command: [] },
     });

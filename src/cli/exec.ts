@@ -7,7 +7,7 @@
 import { Attacher } from "../attacher.ts";
 import type { Config } from "../config.ts";
 import { type PtyHandle, runPty } from "../pty/index.ts";
-import { Session } from "../session.ts";
+import { Relay } from "../relay.ts";
 import { FileWatch } from "../util/file.ts";
 import { VirtualTerminal } from "../vt/index.ts";
 
@@ -21,8 +21,8 @@ import { VirtualTerminal } from "../vt/index.ts";
 export async function runExec(command: string[], config: Config): Promise<number> {
   let ptyHandle: PtyHandle | null = null;
 
-  const session = new Session({ write: (bytes) => ptyHandle?.write(bytes) });
-  const attacher = new Attacher(session, {
+  const relay = new Relay({ write: (bytes) => ptyHandle?.write(bytes) });
+  const attacher = new Attacher(relay, {
     sceneConfig: { _mode: "exec", _command: command },
     channelConfig: { _mode: "exec", _command: command },
   });
@@ -49,7 +49,7 @@ export async function runExec(command: string[], config: Config): Promise<number
     scrollback: config.terminal.scrollback,
     debounceMs: config.terminal.debounceMs,
     maxIntervalMs: config.terminal.maxIntervalMs,
-    onChange: (snapshot) => session.update(snapshot),
+    onChange: (snapshot) => relay.update(snapshot),
   });
 
   ptyHandle = runPty({

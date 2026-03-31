@@ -1,6 +1,8 @@
 /**
- * Session — processes VT snapshots through scene recognition and
- * propagates output to channels.
+ * Relay — bidirectional relay between VT snapshots and channels.
+ *
+ * Processes snapshots through scene recognition (output path) and
+ * routes channel input back through scenes to the PTY (input path).
  *
  * @module
  */
@@ -12,13 +14,13 @@ import { SequentialQueue } from "./util/async.ts";
 import type { Snapshot } from "./vt/snapshot.ts";
 
 /**
- * Snapshot processing and channel propagation session.
+ * Bidirectional relay between VT snapshots and channels.
  *
  * Combines {@link CompositeScene} with a set of {@link Channel}s.
- * Each call to {@link Session.update | update} feeds a snapshot through the scene engine
+ * Each call to {@link Relay.update | update} feeds a snapshot through the scene engine
  * and delivers the resulting output batch to all channels.
  */
-export class Session {
+export class Relay {
   private composite?: CompositeScene;
   private channels: Channel[] = [];
   private lastSnapshot: Snapshot | null = null;
@@ -27,7 +29,7 @@ export class Session {
   private readonly sendQueue: SequentialQueue;
 
   /**
-   * Create a new Session.
+   * Create a new Relay.
    *
    * @param options - Optional write callback for PTY injection
    */
@@ -79,7 +81,7 @@ export class Session {
   }
 
   /**
-   * Add channels to the session.
+   * Add channels to the relay.
    *
    * Each channel is started with a scene-aware `send` callback.
    *
@@ -101,10 +103,10 @@ export class Session {
   }
 
   /**
-   * Remove channels from the session.
+   * Remove channels from the relay.
    *
    * Each channel is stopped and removed from the internal list.
-   * Channels not present in the session are silently ignored.
+   * Channels not present in the relay are silently ignored.
    *
    * @param channels - Channels to remove
    */

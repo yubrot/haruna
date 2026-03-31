@@ -81,7 +81,7 @@ export async function recordDump(script: RecordScript, outputPath: string): Prom
   let snapshotIndex = 0;
 
   try {
-    const session = runPty({
+    const ptyHandle = runPty({
       command: script.command,
       env: script.env,
       cols: script.cols,
@@ -101,15 +101,15 @@ export async function recordDump(script: RecordScript, outputPath: string): Prom
           });
           snapshotIndex++;
         } else if ("input" in step) {
-          session.write(step.input);
+          ptyHandle.write(step.input);
         } else if ("wait" in step) {
           await wait(step.wait, vt);
         }
       }
     } finally {
       // Terminate child if still running
-      session.kill("SIGTERM");
-      await session.exited;
+      ptyHandle.kill("SIGTERM");
+      await ptyHandle.exited;
     }
   } finally {
     await writer.end();
