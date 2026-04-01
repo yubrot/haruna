@@ -39,33 +39,38 @@ export interface ChannelConfig {
 export function loadChannels(entries: ChannelEntry[], config: ChannelConfig): Channel[] {
   const channels: Channel[] = [];
   for (const entry of entries) {
+    const ch = buildChannel(entry, config);
+    if (ch) channels.push(ch);
+  }
+  return channels;
+}
+
+function buildChannel(entry: ChannelEntry, config: ChannelConfig): Channel | null {
+  try {
     switch (entry.type) {
       case "web": {
         const defaultWait = config._mode === "replay";
-        channels.push(
-          new WebChannel({
-            port: entry.port,
-            host: entry.host,
-            waitForClient: entry.waitForClient ?? defaultWait,
-          }),
-        );
-        break;
+        return new WebChannel({
+          port: entry.port,
+          host: entry.host,
+          waitForClient: entry.waitForClient ?? defaultWait,
+        });
       }
       case "dump": {
-        if (config._mode === "replay") break;
+        if (config._mode === "replay") return null;
         const filePath = entry.path ?? resolve(entry.dir ?? ".haruna-dump", `${Date.now()}.dump`);
-        channels.push(new DumpChannel({ filePath, command: config._command }));
-        break;
+        return new DumpChannel({ filePath, command: config._command });
       }
-      case "discord": {
-        channels.push(new DiscordChannel(entry));
-        break;
-      }
-      case "slack": {
-        channels.push(new SlackChannel(entry));
-        break;
-      }
+      case "discord":
+        return new DiscordChannel(entry);
+      case "slack":
+        return new SlackChannel(entry);
+      default:
+        console.error(`[haruna] unknown channel type: ${(entry as { type: string }).type}`);
+        return null;
     }
+  } catch (e) {
+    console.error(`[haruna][${entry.type}] failed to load: ${e instanceof Error ? e.message : e}`);
+    return null;
   }
-  return channels;
 }

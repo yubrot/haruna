@@ -54,7 +54,15 @@ export class Relay {
   update(snapshot: Snapshot): void {
     this.lastSnapshot = snapshot;
     const prevState = this.composite?.state ?? null;
-    const events = this.composite?.process(snapshot).events ?? [];
+
+    let events: SceneEvent[];
+    try {
+      events = this.composite?.process(snapshot).events ?? [];
+    } catch (e) {
+      console.error(`[haruna] scene processing failed: ${e instanceof Error ? e.message : e}`);
+      events = [];
+    }
+
     const newState = this.composite?.state ?? null;
 
     const currentIdle = this.composite?.isIdle ?? false;
@@ -88,32 +96,25 @@ export class Relay {
   /**
    * Add channels to the relay.
    *
-   * Each channel is started with a scene-aware `send` callback.
-   * Channels already present in the relay are silently skipped.
-   *
    * @param channels - Channels to add
    */
   async addChannels(channels: Channel[]): Promise<void> {
     const send = (input: SceneInput) => this.send(input);
-    const started: Channel[] = [];
     for (const ch of channels) {
       if (this.channels.has(ch)) continue;
       try {
         await ch.start(send);
-        started.push(ch);
+        this.channels.add(ch);
       } catch (e) {
-        await Promise.all(started.map((s) => s.stop().catch(() => {})));
-        throw e;
+        console.error(
+          `[haruna][${ch.name}] failed to start: ${e instanceof Error ? e.message : e}`,
+        );
       }
     }
-    for (const ch of started) this.channels.add(ch);
   }
 
   /**
    * Remove channels from the relay.
-   *
-   * Each channel is stopped and removed from the internal list.
-   * Channels not present in the relay are silently ignored.
    *
    * @param channels - Channels to remove
    */
@@ -122,7 +123,7 @@ export class Relay {
     for (const ch of channels) {
       if (this.channels.delete(ch)) removed.push(ch);
     }
-    await Promise.all(removed.map((ch) => ch.stop().catch(() => {})));
+    await Promise.all(removed.map((ch) => stopChannel(ch)));
   }
 
   /**
@@ -131,7 +132,7 @@ export class Relay {
   async dispose(): Promise<void> {
     const channels = [...this.channels];
     this.channels.clear();
-    await Promise.all(channels.map((ch) => ch.stop().catch(() => {})));
+    await Promise.all(channels.map((ch) => stopChannel(ch)));
     this.composite = undefined;
   }
 
@@ -170,7 +171,13 @@ export class Relay {
   private send(input: SceneInput): void {
     if (!this.write) return;
     this.sendQueue.enqueue(async () => {
-      const mapped = this.composite?.encodeInput(input) ?? null;
+      let mapped: InputAction[] | InputAction | null;
+      try {
+        mapped = this.composite?.encodeInput(input) ?? null;
+      } catch (e) {
+        console.error(`[haruna] scene encodeInput failed: ${e instanceof Error ? e.message : e}`);
+        return;
+      }
       if (mapped !== null) {
         await this.executeActions(mapped);
       } else if (input.type === "text") {
@@ -287,4 +294,12 @@ async function computeSceneCacheKey(resolved: ResolvedSceneEntries): Promise<str
   }
 
   return hasher.digest("hex");
+}
+
+async function stopChannel(ch: Channel): Promise<void> {
+  try {
+    await ch.stop();
+  } catch (e) {
+    console.error(`[haruna][${ch.name}] failed to stop: ${e instanceof Error ? e.message : e}`);
+  }
 }

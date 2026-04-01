@@ -32,6 +32,8 @@ Default to using Bun instead of Node.js.
 - Order code top-down: public types and public API first, then sub-components and internal helpers, then pure utilities at the bottom.
 - Do not use visual separator comments like `//----- ...` or `// ===== ...`. Let the top-down ordering speak for itself.
 - Log messages use `` `[haruna][${name}] message` `` for Scene/Channel code (pluggable modules where the name identifies which scene or channel produced the log), and `` `[haruna] message` `` for haruna core code. Errors from caught exceptions use `e instanceof Error ? e.message : e`.
+- All log output from haruna itself goes to stderr (`console.error`). `console.log` (stdout) is reserved for user-facing data output (e.g. `haruna dump`, `haruna trust --list`).
+- Pluggable modules (Scenes, Channels) must not break the application when they fail — modules that fail to start are excluded, and `stop()` / runtime failures are logged and recovered from.
 
 # Testing
 

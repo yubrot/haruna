@@ -74,10 +74,7 @@ export class Session {
    * Create a new Session with a running PTY, VirtualTerminal, and Relay.
    *
    * When an init command is configured, it is executed first and the
-   * resulting overrides are applied to the config. The initial
-   * configuration is then applied to the relay before returning.
-   * On error during setup, the PTY is killed and all resources are
-   * cleaned up.
+   * resulting overrides are applied to the config.
    *
    * @param options - Session options
    * @returns A fully initialized Session
@@ -122,7 +119,7 @@ export class Session {
       await configurator.apply(config);
     } catch (e) {
       ptyHandle?.kill();
-      await ptyHandle?.exited.catch(() => {});
+      await ptyHandle?.exited;
       await relay.dispose().catch(() => {});
       vt.dispose();
       throw e;
@@ -164,7 +161,7 @@ export class Session {
     if (this.disposed) return;
     this.disposed = true;
     this.ptyHandle.kill();
-    await this.ptyHandle.exited.catch(() => {});
+    await this.ptyHandle.exited;
     await this.vt.flush();
     await this.relay.dispose();
     this.vt.dispose();

@@ -12,11 +12,8 @@ import { isScene, type Scene, type SceneConfig, type SceneFactory } from "./inte
 /**
  * Load {@link Scene} instances from previously resolved entries.
  *
- * Iterates over builtin names and file paths, loading each via
- * {@link loadBuiltinScene} and {@link loadFileScene}. Per-entry
- * properties are merged into the {@link SceneConfig} passed to each
- * scene factory. Entries that fail to load are silently skipped
- * (errors are logged to stderr).
+ * Per-entry properties are merged into the {@link SceneConfig} passed
+ * to each scene factory.
  *
  * @param resolved - Resolved scene entries from {@link Config.resolveSceneEntries}
  * @param config - Base configuration passed to scene factories
@@ -64,7 +61,12 @@ export async function loadBuiltinScene(name: string, config: SceneConfig): Promi
     return null;
   }
 
-  return buildScene(factory, config);
+  try {
+    return buildScene(factory, config);
+  } catch (e) {
+    console.error(`[haruna][${name}] failed to load: ${e instanceof Error ? e.message : e}`);
+    return null;
+  }
 }
 
 /**
@@ -91,7 +93,7 @@ export async function loadFileScene(path: string, config: SceneConfig): Promise<
 
     return scene;
   } catch (e) {
-    console.error(`haruna: scene: ${path}: failed to load: ${e instanceof Error ? e.message : e}`);
+    console.error(`[haruna][scene: ${path}] failed to load: ${e instanceof Error ? e.message : e}`);
     return null;
   }
 }
