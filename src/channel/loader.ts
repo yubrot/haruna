@@ -19,8 +19,8 @@ import { WebChannel } from "./web/index.ts";
  * Carries runtime information shared across all channel types.
  */
 export interface ChannelConfig {
-  /** Operating mode (`"exec"` or `"replay"`). */
-  _mode: "exec" | "replay";
+  /** Operating mode. */
+  _mode: "exec" | "replay" | "mux";
   /** The command being executed. */
   _command: string[];
 }

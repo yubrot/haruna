@@ -202,7 +202,7 @@ export class Relay {
 /** Options controlling how config is applied to a relay. */
 export interface RelayConfiguratorOptions {
   /** Operating mode forwarded to scene/channel factories. */
-  mode: "exec" | "replay";
+  mode: "exec" | "replay" | "mux";
   /** The command being executed. */
   command: string[];
 }

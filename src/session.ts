@@ -27,7 +27,7 @@ export interface SessionOptions {
   /** Wire local stdin/stdout and SIGWINCH to the PTY. */
   passthrough: boolean;
   /** Operating mode — forwarded to scene/channel factories. */
-  mode: "exec";
+  mode: "exec" | "mux";
 }
 
 /**

@@ -118,8 +118,8 @@ export type SceneFactory = Scene | ((config: SceneConfig) => Scene);
  * haruna; additional keys come from per-scene configuration entries.
  */
 export interface SceneConfig {
-  /** Operating mode (`"exec"` or `"replay"`). */
-  _mode: "exec" | "replay";
+  /** Operating mode. */
+  _mode: "exec" | "replay" | "mux";
   /** The command being executed. */
   _command: string[];
   /** Per-scene configuration properties. */

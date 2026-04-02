@@ -249,15 +249,20 @@ describe("Config", () => {
     });
 
     test("accepts gateway string shorthand", () => {
-      const source = parseConfig({ gateways: ["web", "slack"] });
-      expect(source.gateways).toMatchObject([{ type: "web" }, { type: "slack" }]);
+      const source = parseConfig({ gateways: ["web"] });
+      expect(source.gateways).toMatchObject([{ type: "web" }]);
     });
 
-    test("accepts gateway object with extra properties", () => {
+    test("accepts gateway object with properties", () => {
       const source = parseConfig({
-        gateways: [{ type: "slack", token: "xoxb-123" }],
+        gateways: [{ type: "web", port: 8080, host: "0.0.0.0" }],
       });
-      expect(source.gateways).toMatchObject([{ type: "slack", token: "xoxb-123" }]);
+      expect(source.gateways).toMatchObject([{ type: "web", port: 8080, host: "0.0.0.0" }]);
+    });
+
+    test("applies gateway defaults for port and host", () => {
+      const source = parseConfig({ gateways: ["web"] });
+      expect(source.gateways).toMatchObject([{ type: "web", port: 0, host: "127.0.0.1" }]);
     });
 
     test("defaults gateways to empty array", () => {

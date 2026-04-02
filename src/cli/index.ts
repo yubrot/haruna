@@ -11,6 +11,7 @@ import { Command, InvalidArgumentError } from "commander";
 import { Config, findConfigFile } from "../config.ts";
 import { runDump } from "./dump.ts";
 import { runExec } from "./exec.ts";
+import { runMux } from "./mux.ts";
 import { runRecord } from "./record.ts";
 import { runReplay } from "./replay.ts";
 import { ensureTrusted, runTrust } from "./trust.ts";
@@ -58,6 +59,16 @@ program
   .action(async (args: string[], opts: { config?: string }) => {
     const config = await loadConfig(opts.config);
     process.exit(await runExec(args, config));
+  });
+
+// mux
+program
+  .command("mux")
+  .description("Run the multiplexer with gateway-driven sessions")
+  .option("-c, --config <path>", "path to config file")
+  .action(async (opts: { config?: string }) => {
+    const config = await loadConfig(opts.config);
+    process.exit(await runMux(config));
   });
 
 // replay
