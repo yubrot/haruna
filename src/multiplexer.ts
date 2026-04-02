@@ -201,6 +201,19 @@ export class Multiplexer implements SessionManager {
     await Promise.all(removed.map((gw) => stopGateway(gw)));
   }
 
+  /**
+   * Send a signal to all alive session PTY processes.
+   *
+   * @param signal - Signal to send (e.g. "SIGTERM", "SIGKILL")
+   */
+  killAll(signal: NodeJS.Signals): void {
+    for (const slot of this.slots.values()) {
+      if (slot.phase === "alive") {
+        slot.session.ptyHandle.kill(signal);
+      }
+    }
+  }
+
   /** Dispose of all managed gateways and sessions. */
   async dispose(): Promise<void> {
     // Stop all gateways

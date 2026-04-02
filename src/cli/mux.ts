@@ -8,6 +8,8 @@ import type { Config } from "../config.ts";
 import { Multiplexer, MultiplexerConfigurator } from "../multiplexer.ts";
 import { FileWatch } from "../util/file.ts";
 
+const KILL_TIMEOUT_MS = 10_000;
+
 /**
  * Run the multiplexer with gateways from configuration.
  *
@@ -33,24 +35,41 @@ export async function runMux(config: Config): Promise<number> {
 
   console.error(`[haruna] Multiplexer running. Press Ctrl+C to stop.`);
 
-  // Wait for shutdown signal
-  const exitSignal = await new Promise<string>((resolve) => {
-    const onSigint = () => {
-      process.off("SIGINT", onSigint);
-      process.off("SIGTERM", onSigterm);
-      resolve("SIGINT");
+  // Wait for first shutdown signal
+  await new Promise<void>((resolve) => {
+    const onSignal = () => {
+      process.off("SIGINT", onSignal);
+      process.off("SIGTERM", onSignal);
+      resolve();
     };
-    const onSigterm = () => {
-      process.off("SIGINT", onSigint);
-      process.off("SIGTERM", onSigterm);
-      resolve("SIGTERM");
-    };
-    process.on("SIGINT", onSigint);
-    process.on("SIGTERM", onSigterm);
+    process.on("SIGINT", onSignal);
+    process.on("SIGTERM", onSignal);
   });
 
-  console.error(`[haruna] Received ${exitSignal}, shutting down...`);
+  console.error("[haruna] Shutting down (SIGTERM to sessions)...");
   fileWatch.close();
+  mux.killAll("SIGTERM");
+
+  // During disposal: second signal → immediate SIGKILL + force exit
+  const onForceSignal = () => {
+    console.error("[haruna] Forced shutdown (SIGKILL to sessions).");
+    mux.killAll("SIGKILL");
+    process.exit(1);
+  };
+  process.on("SIGINT", onForceSignal);
+  process.on("SIGTERM", onForceSignal);
+
+  // Escalate to SIGKILL after timeout
+  const killTimer = setTimeout(() => {
+    console.error("[haruna] Graceful shutdown timed out, sending SIGKILL...");
+    mux.killAll("SIGKILL");
+  }, KILL_TIMEOUT_MS);
+
   await mux.dispose();
+
+  clearTimeout(killTimer);
+  process.off("SIGINT", onForceSignal);
+  process.off("SIGTERM", onForceSignal);
+
   return 0;
 }
