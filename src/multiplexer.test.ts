@@ -314,7 +314,7 @@ describe("MultiplexerConfigurator", () => {
     const configurator = new MultiplexerConfigurator(mux);
     const config1 = new Config(parseConfig({ gateways: [] }), null, process.cwd());
     const config2 = new Config(
-      parseConfig({ gateways: [{ type: "unknown-type-for-test" }] }),
+      parseConfig({ gateways: [{ type: "web", port: 19999 }] }),
       null,
       process.cwd(),
     );

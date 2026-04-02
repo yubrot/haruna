@@ -120,6 +120,22 @@ List of available scene types:
 - [`shell`](src/scene/builtin/shell/README.md) — Recognizes interactive shell prompts
 - [`claude-code`](src/scene/builtin/claude-code/README.md) — Recognizes Claude Code CLI sessions
 
+### `gateways`
+
+Gateway entries for multiplexing mode (`haruna mux`). Each entry is a string
+shorthand or an object with a `type` key. Ignored in normal mode (`haruna exec`).
+
+```yaml
+# Default: [] (no gateways)
+gateways:
+  - type: web
+    port: 7800
+```
+
+List of available gateway types:
+
+- [`web`](src/gateway/web/README.md) — HTTP + WebSocket gateway with a lobby page for managing sessions from a browser
+
 ### `terminal`
 
 Virtual terminal emulator settings (values shown are defaults). These values are

@@ -12,8 +12,15 @@ import { builtinSceneRegistry, expandBuiltinSceneAliases } from "./scene/builtin
 import { expandGlobs } from "./util/file.ts";
 
 const GatewayEntrySchema = v.pipe(
-  v.union([v.string(), v.objectWithRest({ type: v.string() }, v.unknown())]),
+  v.union([v.string(), v.record(v.string(), v.unknown())]),
   v.transform((input) => (typeof input === "string" ? { type: input } : input)),
+  v.variant("type", [
+    v.object({
+      type: v.literal("web"),
+      port: v.optional(v.pipe(v.number(), v.integer(), v.minValue(0)), 0),
+      host: v.optional(v.string(), "127.0.0.1"),
+    }),
+  ]),
 );
 
 const ConfigSchema = v.object({

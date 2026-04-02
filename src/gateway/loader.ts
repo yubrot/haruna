@@ -7,6 +7,7 @@
 
 import type { GatewayEntry } from "../config.ts";
 import type { Gateway } from "./interface.ts";
+import { WebGateway } from "./web/index.ts";
 
 /**
  * Instantiate {@link Gateway} objects from configuration entries.
@@ -26,6 +27,8 @@ export function loadGateways(entries: GatewayEntry[]): Gateway[] {
 function buildGateway(entry: GatewayEntry): Gateway | null {
   try {
     switch (entry.type) {
+      case "web":
+        return new WebGateway({ port: entry.port, host: entry.host });
       default:
         console.error(`[haruna] unknown gateway type: ${(entry as { type: string }).type}`);
         return null;
