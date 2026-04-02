@@ -69,6 +69,7 @@ export class Multiplexer implements SessionManager {
         return await this.request(id, channel);
       case "alive":
         await slot.session.relay.addChannels([channel]);
+        console.error(`[haruna] channel attached: ${channel.name} -> session ${id}`);
         return;
       case "creating":
         await slot.ready;
@@ -93,10 +94,12 @@ export class Multiplexer implements SessionManager {
       });
 
       this.slots.set(id, { phase: "alive", session });
+      console.error(`[haruna] session created: ${id}`);
       invokeCallbacks(this.onCreatedCallbacks, { id });
 
       resolve();
       await session.relay.addChannels([channel]);
+      console.error(`[haruna] channel attached: ${channel.name} -> session ${id}`);
 
       // Register PTY exit handler after attach completes so that
       // short-lived processes don't transition to "destroying"
@@ -111,6 +114,7 @@ export class Multiplexer implements SessionManager {
           })
           .finally(() => {
             this.slots.delete(id);
+            console.error(`[haruna] session destroyed: ${id}`);
             invokeCallbacks(this.onDestroyedCallbacks, { id });
           });
         this.slots.set(id, { phase: "destroying", done });
@@ -131,6 +135,7 @@ export class Multiplexer implements SessionManager {
   detach(id: string, channel: Channel): void {
     const slot = this.slots.get(id);
     if (slot?.phase !== "alive") return;
+    console.error(`[haruna] channel detached: ${channel.name} -> session ${id}`);
     void slot.session.relay.removeChannels([channel]);
   }
 
